@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Oriacle — Star Reading App</title>
+<link rel="stylesheet" href="mystic.css"/>
+</head>
+<body>
+<header>
+  <span class="logo">✦ Oriacle</span>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+
+<main id="app" style="display:none">
+  <div class="hub-hero">
+    <span class="hub-star">✧</span>
+    <h1 class="hub-title">Oriacle</h1>
+    <p class="hub-desc">Your personal mystic — guided by stars, numbers, and soul</p>
+  </div>
+
+  <div id="birthdate-panel" class="card" style="max-width:480px;margin:0 auto 1.8rem;">
+    <p style="font-size:.82rem;color:var(--muted);margin:0 0 .75rem;">Register your date of birth to auto-fill it across all apps</p>
+    <div id="birthdate-status"></div>
+  </div>
+
+  <div class="hub-section">▷ Zodiac &amp; Destiny</div>
+  <div class="hub-grid">
+    <a href="apps/star-reading.html" class="hub-card"><span class="hub-card-icon">⭐</span><span class="hub-card-num">①</span><span class="hub-card-label">Today's Star Reading</span></a>
+    <a href="apps/numerology.html" class="hub-card"><span class="hub-card-icon">🔢</span><span class="hub-card-num">②</span><span class="hub-card-label">Numerology Reading</span></a>
+    <a href="apps/guardian-star.html" class="hub-card"><span class="hub-card-icon">🌟</span><span class="hub-card-num">③</span><span class="hub-card-label">Guardian Star Reading</span></a>
+    <a href="apps/nine-star-ki.html" class="hub-card"><span class="hub-card-icon">☯️</span><span class="hub-card-num">④</span><span class="hub-card-label">Nine Star Ki</span></a>
+    <a href="apps/maya-calendar.html" class="hub-card"><span class="hub-card-icon">🌀</span><span class="hub-card-num">⑤</span><span class="hub-card-label">Maya Calendar Reading</span></a>
+    <a href="apps/animal-fortune.html" class="hub-card"><span class="hub-card-icon">🐾</span><span class="hub-card-num">⑥</span><span class="hub-card-label">Animal Fortune</span></a>
+    <a href="apps/name-fortune.html" class="hub-card"><span class="hub-card-icon">✍️</span><span class="hub-card-num">⑦</span><span class="hub-card-label">Name Fortune</span></a>
+    <a href="apps/biorhythm.html" class="hub-card"><span class="hub-card-icon">📈</span><span class="hub-card-num">⑧</span><span class="hub-card-label">Biorhythm</span></a>
+    <a href="apps/moon-sign.html" class="hub-card"><span class="hub-card-icon">🌙</span><span class="hub-card-num">⑨</span><span class="hub-card-label">Moon Sign</span></a>
+    <a href="apps/eastern-stars.html" class="hub-card"><span class="hub-card-icon">🐉</span><span class="hub-card-num">⑩</span><span class="hub-card-label">Eastern Zodiac × Eto</span></a>
+    <a href="apps/horoscope-deep.html" class="hub-card"><span class="hub-card-icon">🔭</span><span class="hub-card-num">⑪</span><span class="hub-card-label">Detailed Horoscope</span></a>
+  </div>
+
+  <div class="hub-section">▷ Cards &amp; Symbols</div>
+  <div class="hub-grid">
+    <a href="apps/tarot.html" class="hub-card"><span class="hub-card-icon">🃏</span><span class="hub-card-num">⑫</span><span class="hub-card-label">Single Tarot Draw</span></a>
+    <a href="apps/rune-reading.html" class="hub-card"><span class="hub-card-icon">ᚱ</span><span class="hub-card-num">⑬</span><span class="hub-card-label">Rune Reading</span></a>
+    <a href="apps/oracle-cards.html" class="hub-card"><span class="hub-card-icon">🌸</span><span class="hub-card-num">⑭</span><span class="hub-card-label">Oracle Cards</span></a>
+    <a href="apps/nine-palace.html" class="hub-card"><span class="hub-card-icon">🔲</span><span class="hub-card-num">⑮</span><span class="hub-card-label">Nine Palace Reading</span></a>
+  </div>
+
+  <div class="hub-section">▷ Soul, Past Life &amp; Mission</div>
+  <div class="hub-grid">
+    <a href="apps/past-life.html" class="hub-card"><span class="hub-card-icon">🕯️</span><span class="hub-card-num">⑯</span><span class="hub-card-label">Past Life Reading</span></a>
+    <a href="apps/past-profession.html" class="hub-card"><span class="hub-card-icon">⚔️</span><span class="hub-card-num">⑰</span><span class="hub-card-label">Past Life Profession</span></a>
+    <a href="apps/soul-mission.html" class="hub-card"><span class="hub-card-icon">💎</span><span class="hub-card-num">⑱</span><span class="hub-card-label">Soul Mission Reading</span></a>
+    <a href="apps/spirit-animal.html" class="hub-card"><span class="hub-card-icon">🦋</span><span class="hub-card-num">⑲</span><span class="hub-card-label">Spirit Animal Reading</span></a>
+    <a href="apps/aura-reading.html" class="hub-card"><span class="hub-card-icon">🌈</span><span class="hub-card-num">⑳</span><span class="hub-card-label">Aura Color Reading</span></a>
+    <a href="apps/chakra-check.html" class="hub-card"><span class="hub-card-icon">🔮</span><span class="hub-card-num">㉑</span><span class="hub-card-label">Chakra Reading</span></a>
+  </div>
+
+  <div class="hub-section">▷ Messages &amp; Readings</div>
+  <div class="hub-grid">
+    <a href="apps/oracle-message.html" class="hub-card"><span class="hub-card-icon">🌌</span><span class="hub-card-num">㉒</span><span class="hub-card-label">Oracle Message</span></a>
+    <a href="apps/dream-decoder.html" class="hub-card"><span class="hub-card-icon">💤</span><span class="hub-card-num">㉓</span><span class="hub-card-label">Dream Decoder AI</span></a>
+    <a href="apps/soul-compatibility.html" class="hub-card"><span class="hub-card-icon">💫</span><span class="hub-card-num">㉔</span><span class="hub-card-label">Soul Compatibility</span></a>
+    <a href="apps/dream-colors.html" class="hub-card"><span class="hub-card-icon">🎨</span><span class="hub-card-num">㉕</span><span class="hub-card-label">Dream Colors Reading</span></a>
+    <a href="apps/moon-journal.html" class="hub-card"><span class="hub-card-icon">📔</span><span class="hub-card-num">㉖</span><span class="hub-card-label">Moon Phase Journal</span></a>
+    <a href="apps/cosmic-message.html" class="hub-card"><span class="hub-card-icon">✨</span><span class="hub-card-num">㉗</span><span class="hub-card-label">Cosmic Message</span></a>
+  </div>
+
+  <div class="hub-section">▷ Fortune &amp; Healing</div>
+  <div class="hub-grid">
+    <a href="apps/lucky-color.html" class="hub-card"><span class="hub-card-icon">🎨</span><span class="hub-card-num">㉘</span><span class="hub-card-label">Today's Lucky Color</span></a>
+    <a href="apps/crystal-guide.html" class="hub-card"><span class="hub-card-icon">💠</span><span class="hub-card-num">㉙</span><span class="hub-card-label">Power Stone</span></a>
+    <a href="apps/palm-reading.html" class="hub-card"><span class="hub-card-icon">🤚</span><span class="hub-card-num">㉚</span><span class="hub-card-label">Palm Reading</span></a>
+  </div>
+</main>
+
+<footer style="position:relative;z-index:1;text-align:center;padding:2rem 1.5rem;color:var(--muted);font-size:0.8rem;border-top:1px solid var(--border);">
+
+  <!-- Sister Service link -->
+  <div style="margin-bottom:2rem;padding:1.5rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;max-width:480px;margin-left:auto;margin-right:auto;margin-bottom:2rem;">
+    <div style="font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem;">Sister Service</div>
+    <div style="font-size:1rem;font-weight:500;color:var(--text);margin-bottom:0.4rem;">とむ<span style="color:var(--accent)">SYSTEM</span></div>
+    <p style="font-size:0.78rem;color:var(--muted);line-height:1.7;margin-bottom:1rem;">A collection of AI apps that go beyond divination to make everyday life smarter.<br>13+ tools supporting daily life — language learning, cooking, health management, and more.</p>
+    <a href="https://tomu-ai963.github.io/tomu-system/" target="_blank"
+      style="display:inline-block;padding:0.55rem 1.6rem;border:1px solid var(--accent);color:var(--accent);text-decoration:none;border-radius:40px;font-size:0.75rem;letter-spacing:0.15em;transition:all .2s;"
+      onmouseover="this.style.background='var(--accent)';this.style.color='#0d0d1a';"
+      onmouseout="this.style.background='transparent';this.style.color='var(--accent)';">
+      Browse Apps →
+    </a>
+  </div>
+
+  <nav style="display:flex;flex-wrap:wrap;justify-content:center;gap:1rem 1.5rem;margin-bottom:1rem;">
+    <a href="tokushoho.html" style="color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border);padding-bottom:2px;transition:color .2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Legal Notice</a>
+    <a href="privacy.html" style="color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border);padding-bottom:2px;transition:color .2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Privacy Policy</a>
+    <a href="mailto:Inverted.triangle.leef@gmail.com" style="color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border);padding-bottom:2px;transition:color .2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Contact</a>
+  </nav>
+  © 2026 Oriacle. All rights reserved.
+</footer>
+<script>window.MYSTIC_IS_INDEX = true;</script>
+<script src="mystic-login.js"></script>
+<script>
+window.onMysticLogin = () => {
+  document.getElementById("app").style.display = "block";
+  renderBirthdatePanel();
+};
+
+function renderBirthdatePanel() {
+  const saved = localStorage.getItem("mystic_birthdate");
+  const status = document.getElementById("birthdate-status");
+  if (saved) {
+    status.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+        <span style="color:var(--text);font-size:.9rem;">📅 ${saved}</span>
+        <button id="birthdate-change-btn" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:.3rem .8rem;border-radius:.4rem;cursor:pointer;font-size:.8rem;white-space:nowrap;">Change</button>
+      </div>`;
+    document.getElementById("birthdate-change-btn").addEventListener("click", showBirthdateInput);
+  } else {
+    showBirthdateInput();
+  }
+}
+
+function showBirthdateInput() {
+  const status = document.getElementById("birthdate-status");
+  const saved = localStorage.getItem("mystic_birthdate");
+  status.innerHTML = `
+    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+      <input type="date" id="birthdate-input" min="1921-01-01" max="2030-12-31"
+        style="flex:1;min-width:140px;padding:.5rem .7rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.3);border-radius:.5rem;color:var(--text);font-size:.9rem;"/>
+      <button id="birthdate-save-btn" class="submit-btn" style="padding:.5rem 1.2rem;font-size:.85rem;">Save</button>
+    </div>`;
+  if (saved) document.getElementById("birthdate-input").value = saved;
+  document.getElementById("birthdate-save-btn").addEventListener("click", () => {
+    const val = document.getElementById("birthdate-input").value;
+    if (!val) { alert("Please select your date of birth"); return; }
+    localStorage.setItem("mystic_birthdate", val);
+    renderBirthdatePanel();
+  });
+}
+
+document.getElementById("logout-btn").addEventListener("click", () => {
+  MysticAuth.logout();
+  location.reload();
+});
+</script>
+</body>
+</html>

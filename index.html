@@ -1,146 +1,1366 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Oriacle — Star Reading App</title>
-<link rel="stylesheet" href="mystic.css"/>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="description" content="Oriacle — Where Ancient East meets Modern AI. 30 divination arts powered by artificial intelligence. Astrology, Tarot, Numerology, Runes, and more."/>
+  <title>Oriacle — Ancient East meets Modern AI</title>
+
+  <!-- Google Fonts: Cormorant Garamond + Manrope -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ── Reset & Base ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    /* ── Design Tokens ────────────────────────────── */
+    :root {
+      --bg:        #060614;
+      --bg2:       #0c0c20;
+      --bg3:       #10102a;
+      --card:      rgba(255,255,255,0.035);
+      --card-h:    rgba(255,255,255,0.06);
+      --border:    rgba(255,255,255,0.08);
+      --border-g:  rgba(180,140,255,0.18);
+
+      --purple:    #7c52e8;
+      --purple-l:  #b399ff;
+      --purple-d:  #4a2fa0;
+      --gold:      #c9a227;
+      --gold-l:    #e8c84a;
+      --gold-d:    #8a6c10;
+
+      --text:      #e8e2f5;
+      --text-2:    #b0a8cc;
+      --muted:     #6e6690;
+
+      --ff-head:   'Cormorant Garamond', Georgia, serif;
+      --ff-body:   'Manrope', system-ui, sans-serif;
+
+      --ease:      cubic-bezier(0.22, 1, 0.36, 1);
+      --radius:    12px;
+      --max-w:     1100px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ff-body);
+      font-weight: 400;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ── Stars ────────────────────────────────────── */
+    #stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      animation: twinkle linear infinite alternate;
+    }
+    @keyframes twinkle {
+      from { opacity: 0.05; }
+      to   { opacity: 0.75; }
+    }
+
+    /* ── Scroll Fade ──────────────────────────────── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ── Layout Helpers ───────────────────────────── */
+    .inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+    section { position: relative; z-index: 1; }
+
+    /* ── Buttons ──────────────────────────────────── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.8rem 2rem;
+      background: linear-gradient(135deg, var(--purple), var(--purple-d));
+      color: #fff;
+      font-family: var(--ff-body);
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border: none;
+      border-radius: 40px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 24px rgba(124,82,232,0.35);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(124,82,232,0.5);
+    }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.78rem 1.8rem;
+      background: transparent;
+      color: var(--text-2);
+      font-family: var(--ff-body);
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      border: 1px solid var(--border-g);
+      border-radius: 40px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .btn-ghost:hover {
+      color: var(--purple-l);
+      border-color: var(--purple-l);
+      background: rgba(124,82,232,0.08);
+    }
+    .btn-gold {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.8rem 2rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold-d));
+      color: #0c0c20;
+      font-family: var(--ff-body);
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border: none;
+      border-radius: 40px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 24px rgba(201,162,39,0.35);
+    }
+    .btn-gold:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(201,162,39,0.5);
+    }
+
+    /* ── Section Labels ───────────────────────────── */
+    .eyebrow {
+      display: inline-block;
+      font-family: var(--ff-body);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.9rem;
+    }
+    .section-title {
+      font-family: var(--ff-head);
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 500;
+      line-height: 1.2;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+    .section-lead {
+      font-size: 1rem;
+      color: var(--text-2);
+      max-width: 540px;
+      line-height: 1.75;
+    }
+    .section-head {
+      margin-bottom: 3.5rem;
+    }
+    .text-center { text-align: center; }
+    .text-center .section-lead { margin: 0 auto; }
+
+    /* ── Divider ──────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-g), transparent);
+      margin: 0 auto;
+      max-width: var(--max-w);
+    }
+
+    /* ═══════════════════════════════════════════════
+       NAV
+    ═══════════════════════════════════════════════ */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(6,6,20,0.72);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+    .nav-logo {
+      font-family: var(--ff-head);
+      font-size: 1.45rem;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--text-2);
+      font-size: 0.88rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--purple-l); }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    @media (max-width: 700px) {
+      .nav-links { display: none; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       HERO
+    ═══════════════════════════════════════════════ */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8rem 1.5rem 5rem;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1.1rem;
+      border: 1px solid rgba(201,162,39,0.35);
+      border-radius: 40px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--gold);
+      background: rgba(201,162,39,0.06);
+      margin-bottom: 2rem;
+    }
+    .hero-badge::before { content: '✦'; }
+    .hero-title {
+      font-family: var(--ff-head);
+      font-size: clamp(2.8rem, 7vw, 5.5rem);
+      font-weight: 400;
+      line-height: 1.12;
+      color: var(--text);
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.01em;
+    }
+    .hero-title em {
+      font-style: italic;
+      color: var(--purple-l);
+    }
+    .hero-sub {
+      font-size: clamp(0.95rem, 1.8vw, 1.12rem);
+      color: var(--text-2);
+      max-width: 540px;
+      line-height: 1.8;
+      margin-bottom: 2.5rem;
+    }
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 3rem;
+    }
+    .hero-note {
+      font-size: 0.78rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    /* Glow orb behind hero text */
+    .hero-orb {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124,82,232,0.12) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    #hero > * { position: relative; z-index: 1; }
+
+    /* ── Hero Stats ───────────────────────────────── */
+    .hero-stats {
+      display: flex;
+      gap: 2.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+    .h-stat {
+      text-align: center;
+    }
+    .h-stat-num {
+      display: block;
+      font-family: var(--ff-head);
+      font-size: 2rem;
+      font-weight: 500;
+      color: var(--gold-l);
+      line-height: 1;
+      margin-bottom: 0.25rem;
+    }
+    .h-stat-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ═══════════════════════════════════════════════
+       TRADITIONS
+    ═══════════════════════════════════════════════ */
+    #traditions {
+      padding: 6rem 1.5rem;
+      background: var(--bg2);
+    }
+    .traditions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1rem;
+    }
+    .trad-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      transition: border-color 0.3s, background 0.3s, transform 0.3s;
+      cursor: default;
+    }
+    .trad-card:hover {
+      border-color: var(--border-g);
+      background: var(--card-h);
+      transform: translateY(-3px);
+    }
+    .trad-icon {
+      font-size: 2rem;
+      margin-bottom: 0.9rem;
+      display: block;
+    }
+    .trad-name {
+      font-family: var(--ff-head);
+      font-size: 1.3rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+    }
+    .trad-origin {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.6rem;
+    }
+    .trad-desc {
+      font-size: 0.88rem;
+      color: var(--text-2);
+      line-height: 1.65;
+    }
+    .trad-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 1rem;
+    }
+    .trad-tag {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.65rem;
+      border: 1px solid rgba(179,153,255,0.2);
+      border-radius: 20px;
+      color: var(--purple-l);
+      background: rgba(124,82,232,0.06);
+    }
+
+    /* ═══════════════════════════════════════════════
+       FEATURES (30 ARTS)
+    ═══════════════════════════════════════════════ */
+    #features {
+      padding: 6rem 1.5rem;
+    }
+    .features-intro {
+      display: flex;
+      gap: 4rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      margin-bottom: 3.5rem;
+    }
+    .features-intro .section-head { flex: 1; min-width: 280px; }
+    .features-aside {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding-top: 0.5rem;
+    }
+    .aside-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.8rem 1.1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .aside-stat-icon { font-size: 1.1rem; }
+    .aside-stat-text { font-size: 0.82rem; color: var(--text-2); }
+    .aside-stat-text strong { color: var(--text); }
+
+    .cat-block { margin-bottom: 2.5rem; }
+    .cat-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--purple-l);
+      margin-bottom: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .cat-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .arts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+    .art-card {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.75rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: border-color 0.2s, background 0.2s;
+      text-decoration: none;
+    }
+    .art-card:hover {
+      border-color: var(--border-g);
+      background: var(--card-h);
+    }
+    .art-icon { font-size: 1.15rem; flex-shrink: 0; }
+    .art-name {
+      font-size: 0.82rem;
+      color: var(--text-2);
+      line-height: 1.35;
+    }
+
+    /* ═══════════════════════════════════════════════
+       PRICING
+    ═══════════════════════════════════════════════ */
+    #pricing {
+      padding: 6rem 1.5rem;
+      background: var(--bg2);
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      align-items: start;
+      margin-top: 1rem;
+    }
+    .price-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.2rem 2rem;
+      position: relative;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .price-card.featured {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 1px var(--purple), 0 16px 48px rgba(124,82,232,0.18);
+    }
+    .price-card:hover {
+      transform: translateY(-4px);
+    }
+    .price-badge {
+      position: absolute;
+      top: -0.65rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, var(--purple), var(--purple-d));
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.25rem 1rem;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .price-tier {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .price-tier.gold { color: var(--gold); }
+    .price-amount {
+      font-family: var(--ff-head);
+      font-size: 3rem;
+      font-weight: 400;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 0.2rem;
+    }
+    .price-amount sup {
+      font-family: var(--ff-body);
+      font-size: 1.1rem;
+      font-weight: 600;
+      vertical-align: super;
+    }
+    .price-period {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+    .price-desc {
+      font-size: 0.88rem;
+      color: var(--text-2);
+      line-height: 1.6;
+      margin-bottom: 1.8rem;
+      padding-bottom: 1.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .price-features { list-style: none; margin-bottom: 2rem; }
+    .price-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.87rem;
+      color: var(--text-2);
+      margin-bottom: 0.65rem;
+      line-height: 1.4;
+    }
+    .price-features li::before {
+      content: '✦';
+      color: var(--purple-l);
+      font-size: 0.65rem;
+      margin-top: 0.2rem;
+      flex-shrink: 0;
+    }
+    .price-features li.dim { color: var(--muted); }
+    .price-features li.dim::before { color: var(--muted); }
+    .price-cta { width: 100%; justify-content: center; text-align: center; }
+
+    /* ═══════════════════════════════════════════════
+       TESTIMONIALS
+    ═══════════════════════════════════════════════ */
+    #testimonials {
+      padding: 6rem 1.5rem;
+    }
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    .testi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      position: relative;
+    }
+    .testi-stars {
+      color: var(--gold);
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+    .testi-quote {
+      font-family: var(--ff-head);
+      font-size: 1.05rem;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--text);
+      line-height: 1.65;
+      margin-bottom: 1.5rem;
+    }
+    .testi-quote::before { content: '\201C'; color: var(--purple-l); font-size: 2rem; line-height: 0; vertical-align: -0.5rem; margin-right: 0.15rem; }
+    .testi-quote::after  { content: '\201D'; color: var(--purple-l); font-size: 2rem; line-height: 0; vertical-align: -0.5rem; margin-left: 0.15rem; }
+    .testi-author {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .testi-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple-d), var(--bg3));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .testi-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .testi-role {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    /* ═══════════════════════════════════════════════
+       FAQ
+    ═══════════════════════════════════════════════ */
+    #faq {
+      padding: 6rem 1.5rem;
+      background: var(--bg2);
+    }
+    .faq-list {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .faq-item {
+      border-bottom: 1px solid var(--border);
+    }
+    .faq-q {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.4rem 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text);
+      font-family: var(--ff-head);
+      font-size: 1.1rem;
+      font-weight: 500;
+      text-align: left;
+      transition: color 0.2s;
+    }
+    .faq-q:hover { color: var(--purple-l); }
+    .faq-arrow {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border: 1px solid var(--border-g);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: var(--purple-l);
+      transition: transform 0.3s, background 0.2s;
+    }
+    .faq-item.open .faq-arrow {
+      transform: rotate(180deg);
+      background: rgba(124,82,232,0.12);
+    }
+    .faq-a {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.35s var(--ease);
+    }
+    .faq-item.open .faq-a { grid-template-rows: 1fr; }
+    .faq-a-inner {
+      overflow: hidden;
+      font-size: 0.9rem;
+      color: var(--text-2);
+      line-height: 1.75;
+      padding-bottom: 0;
+      transition: padding-bottom 0.35s;
+    }
+    .faq-item.open .faq-a-inner { padding-bottom: 1.4rem; }
+
+    /* ═══════════════════════════════════════════════
+       FOOTER CTA
+    ═══════════════════════════════════════════════ */
+    #footer-cta {
+      padding: 7rem 1.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .footer-cta-orb {
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124,82,232,0.1) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    #footer-cta > * { position: relative; z-index: 1; }
+    .footer-cta-eyebrow { margin-bottom: 1.2rem; }
+    .footer-cta-title {
+      font-family: var(--ff-head);
+      font-size: clamp(2rem, 5vw, 3.8rem);
+      font-weight: 400;
+      line-height: 1.2;
+      margin-bottom: 1.2rem;
+    }
+    .footer-cta-sub {
+      font-size: 1rem;
+      color: var(--text-2);
+      max-width: 440px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.75;
+    }
+    .footer-cta-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+    .footer-cta-note {
+      font-size: 0.77rem;
+      color: var(--muted);
+    }
+
+    /* ═══════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════ */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 1.5rem;
+    }
+    .footer-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-logo {
+      font-family: var(--ff-head);
+      font-size: 1.1rem;
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .footer-logo span { color: var(--gold); }
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+      flex-wrap: wrap;
+    }
+    .footer-links a {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--text-2); }
+    .footer-copy {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+  </style>
 </head>
 <body>
-<header>
-  <span class="logo">✦ Oriacle</span>
-  <button class="logout-btn" id="logout-btn">Logout</button>
-</header>
 
-<main id="app" style="display:none">
-  <div class="hub-hero">
-    <span class="hub-star">✧</span>
-    <h1 class="hub-title">Oriacle</h1>
-    <p class="hub-desc">Your personal mystic — guided by stars, numbers, and soul</p>
+<!-- ── Starfield ──────────────────────────────────── -->
+<div id="stars" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════════
+     NAV
+═══════════════════════════════════════════════ -->
+<nav aria-label="Main navigation">
+  <a href="index.html" class="nav-logo">✦ Ori<span>acle</span></a>
+  <ul class="nav-links">
+    <li><a href="#traditions">Traditions</a></li>
+    <li><a href="#features">Arts</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="app.html" class="btn-ghost" style="padding:.55rem 1.2rem;font-size:.83rem;">Sign In</a>
+    <a href="app.html" class="btn-primary" style="padding:.55rem 1.2rem;font-size:.83rem;">Start Free Trial</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="hero-orb" aria-hidden="true"></div>
+
+  <div class="hero-badge">AI-Powered Divination Portal</div>
+
+  <h1 class="hero-title">
+    Ancient East<br>
+    meets <em>Modern AI</em>
+  </h1>
+
+  <p class="hero-sub">
+    30 sacred arts reborn through artificial intelligence — from Nine Star Ki to Tarot,
+    from Soul Mission to Palm Reading. Your mystic portal awaits.
+  </p>
+
+  <div class="hero-actions">
+    <a href="app.html" class="btn-primary">Start Free Trial</a>
+    <a href="#traditions" class="btn-ghost">Explore the Arts ↓</a>
   </div>
 
-  <div id="birthdate-panel" class="card" style="max-width:480px;margin:0 auto 1.8rem;">
-    <p style="font-size:.82rem;color:var(--muted);margin:0 0 .75rem;">Register your date of birth to auto-fill it across all apps</p>
-    <div id="birthdate-status"></div>
+  <p class="hero-note">No credit card required &nbsp;·&nbsp; Cancel anytime</p>
+
+  <div class="hero-stats" style="margin-top:3.5rem;">
+    <div class="h-stat">
+      <span class="h-stat-num">30</span>
+      <span class="h-stat-label">Divination Arts</span>
+    </div>
+    <div class="h-stat">
+      <span class="h-stat-num">5</span>
+      <span class="h-stat-label">Traditions</span>
+    </div>
+    <div class="h-stat">
+      <span class="h-stat-num">AI</span>
+      <span class="h-stat-label">Powered Readings</span>
+    </div>
+    <div class="h-stat">
+      <span class="h-stat-num">∞</span>
+      <span class="h-stat-label">Daily Guidance</span>
+    </div>
   </div>
+</section>
 
-  <div class="hub-section">▷ Zodiac &amp; Destiny</div>
-  <div class="hub-grid">
-    <a href="apps/star-reading.html" class="hub-card"><span class="hub-card-icon">⭐</span><span class="hub-card-num">①</span><span class="hub-card-label">Today's Star Reading</span></a>
-    <a href="apps/numerology.html" class="hub-card"><span class="hub-card-icon">🔢</span><span class="hub-card-num">②</span><span class="hub-card-label">Numerology Reading</span></a>
-    <a href="apps/guardian-star.html" class="hub-card"><span class="hub-card-icon">🌟</span><span class="hub-card-num">③</span><span class="hub-card-label">Guardian Star Reading</span></a>
-    <a href="apps/nine-star-ki.html" class="hub-card"><span class="hub-card-icon">☯️</span><span class="hub-card-num">④</span><span class="hub-card-label">Nine Star Ki</span></a>
-    <a href="apps/maya-calendar.html" class="hub-card"><span class="hub-card-icon">🌀</span><span class="hub-card-num">⑤</span><span class="hub-card-label">Maya Calendar Reading</span></a>
-    <a href="apps/animal-fortune.html" class="hub-card"><span class="hub-card-icon">🐾</span><span class="hub-card-num">⑥</span><span class="hub-card-label">Animal Fortune</span></a>
-    <a href="apps/name-fortune.html" class="hub-card"><span class="hub-card-icon">✍️</span><span class="hub-card-num">⑦</span><span class="hub-card-label">Name Fortune</span></a>
-    <a href="apps/biorhythm.html" class="hub-card"><span class="hub-card-icon">📈</span><span class="hub-card-num">⑧</span><span class="hub-card-label">Biorhythm</span></a>
-    <a href="apps/moon-sign.html" class="hub-card"><span class="hub-card-icon">🌙</span><span class="hub-card-num">⑨</span><span class="hub-card-label">Moon Sign</span></a>
-    <a href="apps/eastern-stars.html" class="hub-card"><span class="hub-card-icon">🐉</span><span class="hub-card-num">⑩</span><span class="hub-card-label">Eastern Zodiac × Eto</span></a>
-    <a href="apps/horoscope-deep.html" class="hub-card"><span class="hub-card-icon">🔭</span><span class="hub-card-num">⑪</span><span class="hub-card-label">Detailed Horoscope</span></a>
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════
+     TRADITIONS
+═══════════════════════════════════════════════ -->
+<section id="traditions">
+  <div class="inner">
+    <div class="section-head text-center fade-up">
+      <div class="eyebrow">Sacred Traditions</div>
+      <h2 class="section-title">Six Paths of Ancient Wisdom</h2>
+      <p class="section-lead">
+        Oriacle draws from the world's deepest mystic traditions —
+        each one a complete system of self-knowledge, now guided by AI.
+      </p>
+    </div>
+
+    <div class="traditions-grid">
+      <div class="trad-card fade-up">
+        <span class="trad-icon">☯️</span>
+        <div class="trad-origin">East Asia</div>
+        <div class="trad-name">Eastern Astrology</div>
+        <p class="trad-desc">Nine Star Ki, Eto (zodiac cycle), and the ancient art of reading heaven and earth energies through birth timing.</p>
+        <div class="trad-tags">
+          <span class="trad-tag">Nine Star Ki</span>
+          <span class="trad-tag">Eastern Zodiac</span>
+          <span class="trad-tag">Nine Palace</span>
+        </div>
+      </div>
+
+      <div class="trad-card fade-up">
+        <span class="trad-icon">⭐</span>
+        <div class="trad-origin">Western / Hellenistic</div>
+        <div class="trad-name">Western Astrology</div>
+        <p class="trad-desc">Sun signs, moon signs, rising ascendants, and complete horoscope charts rooted in Greek and Babylonian sky lore.</p>
+        <div class="trad-tags">
+          <span class="trad-tag">Star Reading</span>
+          <span class="trad-tag">Moon Sign</span>
+          <span class="trad-tag">Horoscope</span>
+        </div>
+      </div>
+
+      <div class="trad-card fade-up">
+        <span class="trad-icon">🔢</span>
+        <div class="trad-origin">Universal</div>
+        <div class="trad-name">Sacred Numerology</div>
+        <p class="trad-desc">Pythagoras believed numbers are the language of the cosmos. Life Path Numbers and kanji name readings reveal your soul's blueprint.</p>
+        <div class="trad-tags">
+          <span class="trad-tag">Life Path</span>
+          <span class="trad-tag">Name Fortune</span>
+          <span class="trad-tag">Biorhythm</span>
+        </div>
+      </div>
+
+      <div class="trad-card fade-up">
+        <span class="trad-icon">🃏</span>
+        <div class="trad-origin">European / Norse</div>
+        <div class="trad-name">Card &amp; Symbol Arts</div>
+        <p class="trad-desc">The 22 Major Arcana of Tarot, 24 Norse runes, and intuitive oracle card systems that channel archetypal wisdom.</p>
+        <div class="trad-tags">
+          <span class="trad-tag">Tarot</span>
+          <span class="trad-tag">Rune Reading</span>
+          <span class="trad-tag">Oracle Cards</span>
+        </div>
+      </div>
+
+      <div class="trad-card fade-up">
+        <span class="trad-icon">🌀</span>
+        <div class="trad-origin">Mesoamerican</div>
+        <div class="trad-name">Maya Cosmology</div>
+        <p class="trad-desc">The Tzolkin's 260-day sacred calendar assigns every soul a KIN — a unique solar seal and tone that reveals your cosmic role.</p>
+        <div class="trad-tags">
+          <span class="trad-tag">Maya Calendar</span>
+          <span class="trad-tag">KIN Reading</span>
+          <span class="trad-tag">Solar Seal</span>
+        </div>
+      </div>
+
+      <div class="trad-card fade-up">
+        <span class="trad-icon">💎</span>
+        <div class="trad-origin">Esoteric / Spiritual</div>
+        <div class="trad-name">Soul Science</div>
+        <p class="trad-desc">Aura reading, chakra diagnosis, past life regression, soul missions, and spirit animal guidance — maps of the inner universe.</p>
+        <div class="trad-tags">
+          <span class="trad-tag">Soul Mission</span>
+          <span class="trad-tag">Past Life</span>
+          <span class="trad-tag">Aura &amp; Chakra</span>
+        </div>
+      </div>
+    </div>
   </div>
+</section>
 
-  <div class="hub-section">▷ Cards &amp; Symbols</div>
-  <div class="hub-grid">
-    <a href="apps/tarot.html" class="hub-card"><span class="hub-card-icon">🃏</span><span class="hub-card-num">⑫</span><span class="hub-card-label">Single Tarot Draw</span></a>
-    <a href="apps/rune-reading.html" class="hub-card"><span class="hub-card-icon">ᚱ</span><span class="hub-card-num">⑬</span><span class="hub-card-label">Rune Reading</span></a>
-    <a href="apps/oracle-cards.html" class="hub-card"><span class="hub-card-icon">🌸</span><span class="hub-card-num">⑭</span><span class="hub-card-label">Oracle Cards</span></a>
-    <a href="apps/nine-palace.html" class="hub-card"><span class="hub-card-icon">🔲</span><span class="hub-card-num">⑮</span><span class="hub-card-label">Nine Palace Reading</span></a>
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════
+     FEATURES — 30 ARTS
+═══════════════════════════════════════════════ -->
+<section id="features">
+  <div class="inner">
+    <div class="features-intro">
+      <div class="section-head fade-up">
+        <div class="eyebrow">The Full Library</div>
+        <h2 class="section-title">30 Paths to<br>Inner Knowledge</h2>
+        <p class="section-lead">Every question finds an answer. Unlimited readings, daily renewed guidance, all in one portal.</p>
+        <div style="margin-top:1.5rem;">
+          <a href="app.html" class="btn-primary">Start Free Trial</a>
+        </div>
+      </div>
+      <div class="features-aside fade-up">
+        <div class="aside-stat">
+          <span class="aside-stat-icon">🌐</span>
+          <span class="aside-stat-text"><strong>6 traditions</strong> from East Asia, Europe, and the Americas</span>
+        </div>
+        <div class="aside-stat">
+          <span class="aside-stat-icon">🤖</span>
+          <span class="aside-stat-text"><strong>AI-powered</strong> personalized readings every time</span>
+        </div>
+        <div class="aside-stat">
+          <span class="aside-stat-icon">📅</span>
+          <span class="aside-stat-text"><strong>Daily guidance</strong> — new insights with every visit</span>
+        </div>
+        <div class="aside-stat">
+          <span class="aside-stat-icon">🔐</span>
+          <span class="aside-stat-text"><strong>Private</strong> — your data stays yours</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category: Zodiac & Destiny -->
+    <div class="cat-block fade-up">
+      <div class="cat-label">Zodiac &amp; Destiny</div>
+      <div class="arts-grid">
+        <a href="app.html" class="art-card"><span class="art-icon">⭐</span><span class="art-name">Today's Star Reading</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🔢</span><span class="art-name">Numerology Reading</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🌟</span><span class="art-name">Guardian Star</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">☯️</span><span class="art-name">Nine Star Ki</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🌀</span><span class="art-name">Maya Calendar</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🐾</span><span class="art-name">Animal Fortune</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">✍️</span><span class="art-name">Name Fortune</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">📈</span><span class="art-name">Biorhythm</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🌙</span><span class="art-name">Moon Sign</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🐉</span><span class="art-name">Eastern Zodiac × Eto</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🔭</span><span class="art-name">Detailed Horoscope</span></a>
+      </div>
+    </div>
+
+    <!-- Category: Cards & Symbols -->
+    <div class="cat-block fade-up">
+      <div class="cat-label">Cards &amp; Symbols</div>
+      <div class="arts-grid">
+        <a href="app.html" class="art-card"><span class="art-icon">🃏</span><span class="art-name">Single Tarot Draw</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">ᚱ</span><span class="art-name">Rune Reading</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🌸</span><span class="art-name">Oracle Cards</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🔲</span><span class="art-name">Nine Palace Reading</span></a>
+      </div>
+    </div>
+
+    <!-- Category: Soul, Past Life & Mission -->
+    <div class="cat-block fade-up">
+      <div class="cat-label">Soul, Past Life &amp; Mission</div>
+      <div class="arts-grid">
+        <a href="app.html" class="art-card"><span class="art-icon">🕯️</span><span class="art-name">Past Life Reading</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">⚔️</span><span class="art-name">Past Life Profession</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">💎</span><span class="art-name">Soul Mission Reading</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🦋</span><span class="art-name">Spirit Animal Reading</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🌈</span><span class="art-name">Aura Color Reading</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🔮</span><span class="art-name">Chakra Reading</span></a>
+      </div>
+    </div>
+
+    <!-- Category: Messages & Readings -->
+    <div class="cat-block fade-up">
+      <div class="cat-label">Messages &amp; Readings</div>
+      <div class="arts-grid">
+        <a href="app.html" class="art-card"><span class="art-icon">🌌</span><span class="art-name">Oracle Message</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">💤</span><span class="art-name">Dream Decoder AI</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">💫</span><span class="art-name">Soul Compatibility</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🎨</span><span class="art-name">Dream Colors Reading</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">📔</span><span class="art-name">Moon Phase Journal</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">✨</span><span class="art-name">Cosmic Message</span></a>
+      </div>
+    </div>
+
+    <!-- Category: Fortune & Healing -->
+    <div class="cat-block fade-up">
+      <div class="cat-label">Fortune &amp; Healing</div>
+      <div class="arts-grid">
+        <a href="app.html" class="art-card"><span class="art-icon">🎨</span><span class="art-name">Today's Lucky Color</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">💠</span><span class="art-name">Power Stone</span></a>
+        <a href="app.html" class="art-card"><span class="art-icon">🤚</span><span class="art-name">Palm Reading</span></a>
+      </div>
+    </div>
   </div>
+</section>
 
-  <div class="hub-section">▷ Soul, Past Life &amp; Mission</div>
-  <div class="hub-grid">
-    <a href="apps/past-life.html" class="hub-card"><span class="hub-card-icon">🕯️</span><span class="hub-card-num">⑯</span><span class="hub-card-label">Past Life Reading</span></a>
-    <a href="apps/past-profession.html" class="hub-card"><span class="hub-card-icon">⚔️</span><span class="hub-card-num">⑰</span><span class="hub-card-label">Past Life Profession</span></a>
-    <a href="apps/soul-mission.html" class="hub-card"><span class="hub-card-icon">💎</span><span class="hub-card-num">⑱</span><span class="hub-card-label">Soul Mission Reading</span></a>
-    <a href="apps/spirit-animal.html" class="hub-card"><span class="hub-card-icon">🦋</span><span class="hub-card-num">⑲</span><span class="hub-card-label">Spirit Animal Reading</span></a>
-    <a href="apps/aura-reading.html" class="hub-card"><span class="hub-card-icon">🌈</span><span class="hub-card-num">⑳</span><span class="hub-card-label">Aura Color Reading</span></a>
-    <a href="apps/chakra-check.html" class="hub-card"><span class="hub-card-icon">🔮</span><span class="hub-card-num">㉑</span><span class="hub-card-label">Chakra Reading</span></a>
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════
+     PRICING
+═══════════════════════════════════════════════ -->
+<section id="pricing">
+  <div class="inner">
+    <div class="section-head text-center fade-up">
+      <div class="eyebrow">Pricing</div>
+      <h2 class="section-title">Begin Your Journey</h2>
+      <p class="section-lead">Start free. Unlock the full library when you're ready.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="price-card fade-up">
+        <div class="price-tier">Free</div>
+        <div class="price-amount">$0</div>
+        <div class="price-period">Forever free</div>
+        <p class="price-desc">Explore the basics. No credit card required.</p>
+        <ul class="price-features">
+          <li>3 readings per day</li>
+          <li>10 core divination arts</li>
+          <li>Star reading &amp; numerology</li>
+          <li>Tarot single draw</li>
+          <li class="dim">AI-personalized readings</li>
+          <li class="dim">Palm reading (Vision AI)</li>
+          <li class="dim">Priority support</li>
+        </ul>
+        <a href="app.html" class="btn-ghost price-cta">Start Free Trial</a>
+      </div>
+
+      <!-- Plus -->
+      <div class="price-card featured fade-up">
+        <div class="price-badge">Most Popular</div>
+        <div class="price-tier gold">Oriacle Plus</div>
+        <div class="price-amount"><sup>$</sup>9.99</div>
+        <div class="price-period">per month &nbsp;·&nbsp; cancel anytime</div>
+        <p class="price-desc">Unlimited readings across all 30 divination arts, fully AI-personalized.</p>
+        <ul class="price-features">
+          <li>Unlimited daily readings</li>
+          <li>All 30 divination arts</li>
+          <li>AI-personalized readings</li>
+          <li>Birth date auto-fill</li>
+          <li>Soul compatibility for 2</li>
+          <li>Moon phase journal</li>
+          <li class="dim">Palm reading (Vision AI)</li>
+          <li class="dim">Priority support</li>
+        </ul>
+        <a href="app.html" class="btn-primary price-cta">Start Free Trial</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="price-card fade-up">
+        <div class="price-tier" style="color:var(--purple-l)">Oriacle Pro</div>
+        <div class="price-amount"><sup>$</sup>19.99</div>
+        <div class="price-period">per month &nbsp;·&nbsp; cancel anytime</div>
+        <p class="price-desc">Everything in Plus, plus vision AI for palm reading and priority support.</p>
+        <ul class="price-features">
+          <li>Everything in Plus</li>
+          <li>Palm reading — Vision AI</li>
+          <li>Priority support</li>
+          <li>Early access to new arts</li>
+          <li>Export &amp; save readings</li>
+          <li>API access (coming soon)</li>
+        </ul>
+        <a href="app.html" class="btn-ghost price-cta">Start Free Trial</a>
+      </div>
+    </div>
   </div>
+</section>
 
-  <div class="hub-section">▷ Messages &amp; Readings</div>
-  <div class="hub-grid">
-    <a href="apps/oracle-message.html" class="hub-card"><span class="hub-card-icon">🌌</span><span class="hub-card-num">㉒</span><span class="hub-card-label">Oracle Message</span></a>
-    <a href="apps/dream-decoder.html" class="hub-card"><span class="hub-card-icon">💤</span><span class="hub-card-num">㉓</span><span class="hub-card-label">Dream Decoder AI</span></a>
-    <a href="apps/soul-compatibility.html" class="hub-card"><span class="hub-card-icon">💫</span><span class="hub-card-num">㉔</span><span class="hub-card-label">Soul Compatibility</span></a>
-    <a href="apps/dream-colors.html" class="hub-card"><span class="hub-card-icon">🎨</span><span class="hub-card-num">㉕</span><span class="hub-card-label">Dream Colors Reading</span></a>
-    <a href="apps/moon-journal.html" class="hub-card"><span class="hub-card-icon">📔</span><span class="hub-card-num">㉖</span><span class="hub-card-label">Moon Phase Journal</span></a>
-    <a href="apps/cosmic-message.html" class="hub-card"><span class="hub-card-icon">✨</span><span class="hub-card-num">㉗</span><span class="hub-card-label">Cosmic Message</span></a>
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════
+     TESTIMONIALS
+═══════════════════════════════════════════════ -->
+<section id="testimonials">
+  <div class="inner">
+    <div class="section-head text-center fade-up">
+      <div class="eyebrow">What Seekers Say</div>
+      <h2 class="section-title">Stories of Discovery</h2>
+    </div>
+
+    <div class="testimonials-grid">
+      <div class="testi-card fade-up">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">The Nine Star Ki reading was shockingly accurate. It described my energy pattern in a way no Western astrology ever had. I check it every Monday morning now.</p>
+        <div class="testi-author">
+          <div class="testi-avatar">🌸</div>
+          <div>
+            <div class="testi-name">Sophia M.</div>
+            <div class="testi-role">Wellness Coach, New York</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testi-card fade-up">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">I was skeptical — but the Maya Calendar KIN reading gave me language for things I'd felt my whole life. The AI writing is genuinely poetic, not generic.</p>
+        <div class="testi-author">
+          <div class="testi-avatar">🌙</div>
+          <div>
+            <div class="testi-name">James K.</div>
+            <div class="testi-role">Writer, London</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testi-card fade-up">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">Having 30 tools in one place is incredible. I do my morning Moon Phase Journal, then check my biorhythm before big decisions. It's become a real ritual.</p>
+        <div class="testi-author">
+          <div class="testi-avatar">⭐</div>
+          <div>
+            <div class="testi-name">Yuki T.</div>
+            <div class="testi-role">Designer, Tokyo</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+</section>
 
-  <div class="hub-section">▷ Fortune &amp; Healing</div>
-  <div class="hub-grid">
-    <a href="apps/lucky-color.html" class="hub-card"><span class="hub-card-icon">🎨</span><span class="hub-card-num">㉘</span><span class="hub-card-label">Today's Lucky Color</span></a>
-    <a href="apps/crystal-guide.html" class="hub-card"><span class="hub-card-icon">💠</span><span class="hub-card-num">㉙</span><span class="hub-card-label">Power Stone</span></a>
-    <a href="apps/palm-reading.html" class="hub-card"><span class="hub-card-icon">🤚</span><span class="hub-card-num">㉚</span><span class="hub-card-label">Palm Reading</span></a>
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════
+     FAQ
+═══════════════════════════════════════════════ -->
+<section id="faq">
+  <div class="inner">
+    <div class="section-head text-center fade-up" style="margin-bottom:2.5rem;">
+      <div class="eyebrow">FAQ</div>
+      <h2 class="section-title">Questions &amp; Answers</h2>
+    </div>
+
+    <div class="faq-list fade-up">
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          What is Oriacle?
+          <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">
+          Oriacle is an AI-powered divination portal offering 30 sacred arts — spanning Eastern astrology, Western horoscopes, Tarot, Runes, Numerology, Maya Calendar, Soul Science, and more. Each reading is personalized by Claude AI and delivered instantly.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          How accurate are the readings?
+          <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">
+          Oriacle's calculations — zodiac signs, Nine Star Ki birth stars, Maya KINs, Life Path Numbers — follow the same methods used by traditional practitioners. The AI then interprets these results as a skilled reader would. Accuracy is best understood as meaningful resonance rather than prediction.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Can I try Oriacle before subscribing?
+          <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">
+          Yes. The Free plan gives you 3 readings per day across 10 core arts with no credit card required. You can experience the quality of Oriacle's AI readings before deciding to upgrade.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          What payment methods are accepted?
+          <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">
+          All major credit and debit cards are accepted via Stripe, our secure payment processor. Stripe is PCI-DSS compliant — your card details are never stored by Oriacle.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Can I cancel my subscription anytime?
+          <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">
+          Absolutely. Cancel at any time from your account settings. You'll retain access until the end of your billing period. No cancellation fees, no questions asked.
+        </div></div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Is my personal data kept private?
+          <span class="faq-arrow" aria-hidden="true">▾</span>
+        </button>
+        <div class="faq-a"><div class="faq-a-inner">
+          Yes. Oriacle collects only your email address and optional birth date (stored locally in your browser). Reading content is processed by Claude AI (Anthropic) and is not sold or shared with third parties. See our <a href="privacy.html" style="color:var(--purple-l)">Privacy Policy</a> for full details.
+        </div></div>
+      </div>
+    </div>
   </div>
-</main>
+</section>
 
-<footer style="position:relative;z-index:1;text-align:center;padding:2rem 1.5rem;color:var(--muted);font-size:0.8rem;border-top:1px solid var(--border);">
-
-  <!-- Sister Service link -->
-  <div style="margin-bottom:2rem;padding:1.5rem;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;max-width:480px;margin-left:auto;margin-right:auto;margin-bottom:2rem;">
-    <div style="font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem;">Sister Service</div>
-    <div style="font-size:1rem;font-weight:500;color:var(--text);margin-bottom:0.4rem;">とむ<span style="color:var(--accent)">SYSTEM</span></div>
-    <p style="font-size:0.78rem;color:var(--muted);line-height:1.7;margin-bottom:1rem;">A collection of AI apps that go beyond divination to make everyday life smarter.<br>13+ tools supporting daily life — language learning, cooking, health management, and more.</p>
-    <a href="https://tomu-ai963.github.io/tomu-system/" target="_blank"
-      style="display:inline-block;padding:0.55rem 1.6rem;border:1px solid var(--accent);color:var(--accent);text-decoration:none;border-radius:40px;font-size:0.75rem;letter-spacing:0.15em;transition:all .2s;"
-      onmouseover="this.style.background='var(--accent)';this.style.color='#0d0d1a';"
-      onmouseout="this.style.background='transparent';this.style.color='var(--accent)';">
-      Browse Apps →
-    </a>
+<!-- ═══════════════════════════════════════════════
+     FOOTER CTA
+═══════════════════════════════════════════════ -->
+<section id="footer-cta">
+  <div class="footer-cta-orb" aria-hidden="true"></div>
+  <div class="eyebrow footer-cta-eyebrow fade-up">Your journey begins now</div>
+  <h2 class="footer-cta-title fade-up">
+    Unlock 30 paths to<br>your inner cosmos
+  </h2>
+  <p class="footer-cta-sub fade-up">
+    Start free. No credit card required. Discover what the stars, runes, and your own soul have been trying to tell you.
+  </p>
+  <div class="footer-cta-actions fade-up">
+    <a href="app.html" class="btn-gold">Start Free Trial</a>
+    <a href="#pricing" class="btn-ghost">See Plans</a>
   </div>
+  <p class="footer-cta-note fade-up">Free plan includes 3 readings/day &nbsp;·&nbsp; Upgrade anytime</p>
+</section>
 
-  <nav style="display:flex;flex-wrap:wrap;justify-content:center;gap:1rem 1.5rem;margin-bottom:1rem;">
-    <a href="tokushoho.html" style="color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border);padding-bottom:2px;transition:color .2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Legal Notice</a>
-    <a href="privacy.html" style="color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border);padding-bottom:2px;transition:color .2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Privacy Policy</a>
-    <a href="mailto:Inverted.triangle.leef@gmail.com" style="color:var(--muted);text-decoration:none;border-bottom:1px solid var(--border);padding-bottom:2px;transition:color .2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Contact</a>
-  </nav>
-  © 2026 Oriacle. All rights reserved.
+<!-- ═══════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <a href="index.html" class="footer-logo">✦ Ori<span>acle</span></a>
+    <ul class="footer-links">
+      <li><a href="app.html">App</a></li>
+      <li><a href="privacy.html">Privacy Policy</a></li>
+      <li><a href="tokushoho.html">Legal Notice</a></li>
+      <li><a href="mailto:Inverted.triangle.leef@gmail.com">Contact</a></li>
+    </ul>
+    <p class="footer-copy">© 2026 Oriacle. All rights reserved.</p>
+  </div>
 </footer>
-<script>window.MYSTIC_IS_INDEX = true;</script>
-<script src="mystic-login.js"></script>
+
 <script>
-window.onMysticLogin = () => {
-  document.getElementById("app").style.display = "block";
-  renderBirthdatePanel();
-};
+  /* ── Stars ───────────────────────────────────── */
+  (function() {
+    const container = document.getElementById('stars');
+    const count = window.innerWidth < 600 ? 80 : 130;
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < count; i++) {
+      const s = document.createElement('div');
+      s.className = 'star';
+      const size = Math.random() < 0.25 ? 2 : 1;
+      s.style.cssText =
+        'left:'   + (Math.random() * 100) + '%;' +
+        'top:'    + (Math.random() * 100) + '%;' +
+        'width:'  + size + 'px;' +
+        'height:' + size + 'px;' +
+        'animation-delay:'    + (Math.random() * 4) + 's;' +
+        'animation-duration:' + (2.5 + Math.random() * 3.5) + 's;' +
+        'opacity:' + (0.05 + Math.random() * 0.3) + ';';
+      frag.appendChild(s);
+    }
+    container.appendChild(frag);
+  })();
 
-function renderBirthdatePanel() {
-  const saved = localStorage.getItem("mystic_birthdate");
-  const status = document.getElementById("birthdate-status");
-  if (saved) {
-    status.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
-        <span style="color:var(--text);font-size:.9rem;">📅 ${saved}</span>
-        <button id="birthdate-change-btn" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:.3rem .8rem;border-radius:.4rem;cursor:pointer;font-size:.8rem;white-space:nowrap;">Change</button>
-      </div>`;
-    document.getElementById("birthdate-change-btn").addEventListener("click", showBirthdateInput);
-  } else {
-    showBirthdateInput();
-  }
-}
+  /* ── Scroll Fade-in ─────────────────────────── */
+  (function() {
+    const io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.fade-up').forEach(function(el) { io.observe(el); });
+  })();
 
-function showBirthdateInput() {
-  const status = document.getElementById("birthdate-status");
-  const saved = localStorage.getItem("mystic_birthdate");
-  status.innerHTML = `
-    <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
-      <input type="date" id="birthdate-input" min="1921-01-01" max="2030-12-31"
-        style="flex:1;min-width:140px;padding:.5rem .7rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.3);border-radius:.5rem;color:var(--text);font-size:.9rem;"/>
-      <button id="birthdate-save-btn" class="submit-btn" style="padding:.5rem 1.2rem;font-size:.85rem;">Save</button>
-    </div>`;
-  if (saved) document.getElementById("birthdate-input").value = saved;
-  document.getElementById("birthdate-save-btn").addEventListener("click", () => {
-    const val = document.getElementById("birthdate-input").value;
-    if (!val) { alert("Please select your date of birth"); return; }
-    localStorage.setItem("mystic_birthdate", val);
-    renderBirthdatePanel();
+  /* ── FAQ Accordion ──────────────────────────── */
+  document.querySelectorAll('.faq-item').forEach(function(item) {
+    item.querySelector('.faq-q').addEventListener('click', function() {
+      const open = item.classList.toggle('open');
+      this.setAttribute('aria-expanded', open);
+    });
   });
-}
 
-document.getElementById("logout-btn").addEventListener("click", () => {
-  MysticAuth.logout();
-  location.reload();
-});
+  /* ── Nav background on scroll ───────────────── */
+  window.addEventListener('scroll', function() {
+    document.querySelector('nav').style.background =
+      window.scrollY > 40 ? 'rgba(6,6,20,0.92)' : 'rgba(6,6,20,0.72)';
+  }, { passive: true });
 </script>
 </body>
 </html>
