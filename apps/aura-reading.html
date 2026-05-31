@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Aura Color Reading — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🌈</span>
+    <h1 class="app-title">Aura Color Reading</h1>
+    <p class="app-desc">Read the color of the aura surrounding you now and your soul's state</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>How is your energy right now?</label>
+      <div class="options-grid" id="q1-grid"></div>
+    </div>
+    <div class="field-group">
+      <label>Colors you feel intuitively drawn to (multiple OK)</label>
+      <div class="options-grid" id="q2-grid"></div>
+    </div>
+    <div class="field-group">
+      <label>What emotion are you feeling most strongly?</label>
+      <div class="options-grid" id="q3-grid"></div>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;line-height:1.6;"></div>
+    <button class="submit-btn" id="submit-btn">See My Aura</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Your Aura Color</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+
+function makeSingle(gid,opts,cb){
+  const g=document.getElementById(gid);
+  opts.forEach(o=>{
+    const btn=document.createElement("button");
+    btn.className="opt-btn";btn.textContent=o;
+    btn.addEventListener("click",()=>{
+      g.querySelectorAll(".opt-btn").forEach(b=>b.classList.remove("selected"));
+      btn.classList.add("selected");cb(o);
+    });
+    g.appendChild(btn);
+  });
+}
+function makeMulti(gid,opts,cb){
+  const g=document.getElementById(gid);const sel=new Set();
+  opts.forEach(o=>{
+    const btn=document.createElement("button");
+    btn.className="opt-btn";btn.textContent=o;
+    btn.addEventListener("click",()=>{
+      btn.classList.toggle("selected");
+      sel.has(o)?sel.delete(o):sel.add(o);
+      cb([...sel]);
+    });
+    g.appendChild(btn);
+  });
+}
+
+let a1=null,a2=[],a3=null;
+makeSingle("q1-grid",["Overflowing","Stable","Slightly Tired","Confused","In the Midst of Transformation"],v=>a1=v);
+makeMulti("q2-grid",["Red","Orange","Yellow","Green","Blue","Purple","White","Gold","Pink","Turquoise"],v=>a2=v);
+makeSingle("q3-grid",["Love & Joy","Peace & Stillness","Passion & Curiosity","Anxiety & Uncertainty","Anticipation of Change"],v=>a3=v);
+
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  if(!a1||a2.length===0||!a3){alert("Please answer all questions");return;}
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Energy: ${a1} / Drawn colors: ${a2.join(", ")} / Emotion: ${a3}`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Seeing your aura...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/aura-reading",{answers:{q1:a1,q2:a2.join(", "),q3:a3}});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="See My Aura";}
+});
+</script>
+</body>
+</html>

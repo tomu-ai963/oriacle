@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Maya Calendar Reading — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🌀</span>
+    <h1 class="app-title">Maya Calendar Reading</h1>
+    <p class="app-desc">The Tzolkin solar seal reveals your soul's blueprint</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Date of Birth</label>
+      <input type="date" id="birthdate"/>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Decode the Solar Seal</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Message from the Maya Cosmos</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+function getMayaKin(birthdate) {
+  let [y, m, d] = birthdate.split('-').map(Number);
+
+  // Leap day 2/29 does not exist in the Maya calendar → treat same as 3/1
+  const isLeapDay = (m === 2 && d === 29);
+  if (isLeapDay) { m = 3; d = 1; }
+
+  // Calculate day difference from base date 2000/01/01
+  const base = Date.UTC(2000, 0, 1);
+  const target = Date.UTC(y, m - 1, d);
+  let diff = Math.round((target - base) / 86400000);
+
+  // Adjust for skipped leap days between base and target dates
+  const startYear = Math.min(y, 2000);
+  const endYear   = Math.max(y, 2000);
+  let leapCount = 0;
+  for (let ly = startYear; ly <= endYear; ly++) {
+    if ((ly % 4 === 0 && ly % 100 !== 0) || ly % 400 === 0) {
+      const leapDay = Date.UTC(ly, 1, 29); // 2/29
+      const s = Math.min(target, base);
+      const e = Math.max(target, base);
+      if (leapDay > s && leapDay <= e) leapCount++;
+    }
+  }
+  if (y >= 2000) diff -= leapCount;
+  else           diff += leapCount;
+
+  const kin = ((152 + diff) % 260 + 260) % 260 + 1;
+
+  const tones = ['Magnetic','Lunar','Electric','Self-Existing','Overtone','Rhythmic','Resonant',
+                 'Galactic','Solar','Planetary','Spectral','Crystal','Cosmic'];
+  const seals = ['Red Dragon','White Wind','Blue Night','Yellow Seed','Red Serpent','White World-Bridger',
+                 'Blue Hand','Yellow Star','Red Moon','White Dog','Blue Monkey','Yellow Human',
+                 'Red Skywalker','White Wizard','Blue Eagle','Yellow Warrior',
+                 'Red Earth','White Mirror','Blue Storm','Yellow Sun'];
+
+  const wavespell = Math.floor((kin - 1) / 13) + 1;
+  const toneNumber = ((kin - 1) % 13) + 1;
+
+  return {
+    kin,
+    tone: tones[(kin - 1) % 13],
+    toneNumber,
+    seal: seals[(kin - 1) % 20],
+    wavespell,
+    wavespellSeal: seals[((wavespell - 1) * 13) % 20],
+    isLeapDay,
+  };
+}
+
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const v=document.getElementById("birthdate").value;
+  if(!v){alert("Please enter your date of birth");return;}
+  const maya=getMayaKin(v);
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`KIN: ${maya.kin} / Solar Seal: ${maya.seal} / Wavespell: ${maya.wavespellSeal} Wavespell / Tone: ${maya.toneNumber}`;
+  cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Reading the cosmic calendar...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{
+    const d=await MysticAuth.callApi("/mystic/maya-calendar",{
+      birthdate:v,
+      kin:maya.kin,
+      tone:maya.tone,
+      toneNumber:maya.toneNumber,
+      seal:maya.seal,
+      wavespell:maya.wavespell,
+      wavespellSeal:maya.wavespellSeal,
+    });
+    rt.textContent=d.result;
+  }
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Decode the Solar Seal";}
+});
+</script>
+</body>
+</html>

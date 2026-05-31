@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Oracle Cards — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🌸</span>
+    <h1 class="app-title">Oracle Cards</h1>
+    <p class="app-desc">Choose a theme and draw a message card from the universe</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Choose a theme</label>
+      <div class="options-grid" id="theme-grid"></div>
+    </div>
+    <div class="field-group" style="margin-top:1rem">
+      <label>Intuitively choose a card</label>
+      <div class="symbol-grid" id="card-grid"></div>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Receive the Oracle's Message</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Message from the Universe</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+
+const THEMES=["Love & Relationships","Work & Mission","Money & Abundance","Health & Healing","Spiritual Growth","Life's Turning Point","Creativity","Future Direction"];
+const CARDS_LIST=[
+  ["🌟","Gate of Light"],["🌙","Moon's Embrace"],["🔥","Will of Flame"],["💧","Water's Blessing"],["🌿","Earth's Power"],
+  ["🦋","Transformation"],["🌈","Rainbow Bridge"],["⭐","New Star"],["🕊️","Peace"],["🌺","Blossoming"],
+  ["🌊","Flow"],["🏔️","Summit"],["🌙","Full Moon"],["☀️","The Sun"],["🌙","New Moon"],["⚡","Flash of Light"]
+];
+
+let selTheme=null,selCard=null;
+
+const tg=document.getElementById("theme-grid");
+THEMES.forEach(t=>{
+  const btn=document.createElement("button");
+  btn.className="opt-btn";btn.textContent=t;
+  btn.addEventListener("click",()=>{
+    tg.querySelectorAll(".opt-btn").forEach(b=>b.classList.remove("selected"));
+    btn.classList.add("selected");selTheme=t;
+  });
+  tg.appendChild(btn);
+});
+
+const cg=document.getElementById("card-grid");
+CARDS_LIST.forEach(([icon,name])=>{
+  const btn=document.createElement("button");
+  btn.className="symbol-btn";
+  btn.innerHTML=`<span class="symbol-glyph">${icon}</span>${name}`;
+  btn.addEventListener("click",()=>{
+    cg.querySelectorAll(".symbol-btn").forEach(b=>b.classList.remove("selected"));
+    btn.classList.add("selected");selCard=name;
+  });
+  cg.appendChild(btn);
+});
+
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  if(!selTheme||!selCard){alert("Please choose a theme and a card");return;}
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Theme: ${selTheme} / Card: ${selCard}`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Receiving the message...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/oracle-cards",{theme:selTheme,card:selCard});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Receive the Oracle's Message";}
+});
+</script>
+</body>
+</html>

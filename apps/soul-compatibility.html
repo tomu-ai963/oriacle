@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Soul Compatibility — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">💫</span>
+    <h1 class="app-title">Soul Compatibility</h1>
+    <p class="app-desc">Read the karmic bond between two souls and the meaning of your shared path from a cosmic perspective</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Your Date of Birth</label>
+      <input type="date" id="birthdate1"/>
+    </div>
+    <div class="field-group">
+      <label>Their Date of Birth</label>
+      <input type="date" id="birthdate2"/>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;line-height:1.7;"></div>
+    <button class="submit-btn" id="submit-btn">Read Our Soul Bond</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ The Bond Between Two Souls</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+function getSunSign(b){const[,m,d]=b.split('-').map(Number);if((m===3&&d>=21)||(m===4&&d<=19))return'Aries';if((m===4&&d>=20)||(m===5&&d<=20))return'Taurus';if((m===5&&d>=21)||(m===6&&d<=21))return'Gemini';if((m===6&&d>=22)||(m===7&&d<=22))return'Cancer';if((m===7&&d>=23)||(m===8&&d<=22))return'Leo';if((m===8&&d>=23)||(m===9&&d<=22))return'Virgo';if((m===9&&d>=23)||(m===10&&d<=23))return'Libra';if((m===10&&d>=24)||(m===11&&d<=22))return'Scorpio';if((m===11&&d>=23)||(m===12&&d<=21))return'Sagittarius';if((m===12&&d>=22)||(m===1&&d<=19))return'Capricorn';if((m===1&&d>=20)||(m===2&&d<=18))return'Aquarius';return'Pisces';}
+function getLifePathNumber(b){let n=b.replace(/-/g,'').split('').reduce((a,c)=>a+parseInt(c),0);while(n>9&&n!==11&&n!==22&&n!==33)n=String(n).split('').reduce((a,c)=>a+parseInt(c),0);return n;}
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const b1=document.getElementById("birthdate1").value;
+  const b2=document.getElementById("birthdate2").value;
+  if(!b1||!b2){alert("Please enter both dates of birth");return;}
+  const s1=getSunSign(b1),l1=getLifePathNumber(b1);
+  const s2=getSunSign(b2),l2=getLifePathNumber(b2);
+  const cd=document.getElementById("calc-display");
+  cd.innerHTML=`You: ${s1} · LPN${l1}<br>Them: ${s2} · LPN${l2}`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Reading your soul bond...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/soul-compatibility",{birthdate1:b1,birthdate2:b2,sign1:s1,lpn1:l1,sign2:s2,lpn2:l2});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Read Our Soul Bond";}
+});
+</script>
+</body>
+</html>

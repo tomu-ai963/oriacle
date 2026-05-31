@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Today's Lucky Color — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🎨</span>
+    <h1 class="app-title">Today's Lucky Color</h1>
+    <p class="app-desc">Discover the color that will bring you the most fortune today and how to use it</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Date of Birth</label>
+      <input type="date" id="birthdate"/>
+    </div>
+    <div class="field-group">
+      <label>Date to Read</label>
+      <input type="date" id="target-date"/>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Tell Me My Lucky Color</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Today's Lucky Color</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+function getSunSign(b){const[,m,d]=b.split('-').map(Number);if((m===3&&d>=21)||(m===4&&d<=19))return'Aries';if((m===4&&d>=20)||(m===5&&d<=20))return'Taurus';if((m===5&&d>=21)||(m===6&&d<=21))return'Gemini';if((m===6&&d>=22)||(m===7&&d<=22))return'Cancer';if((m===7&&d>=23)||(m===8&&d<=22))return'Leo';if((m===8&&d>=23)||(m===9&&d<=22))return'Virgo';if((m===9&&d>=23)||(m===10&&d<=23))return'Libra';if((m===10&&d>=24)||(m===11&&d<=22))return'Scorpio';if((m===11&&d>=23)||(m===12&&d<=21))return'Sagittarius';if((m===12&&d>=22)||(m===1&&d<=19))return'Capricorn';if((m===1&&d>=20)||(m===2&&d<=18))return'Aquarius';return'Pisces';}
+function getNineStarKi(b){const[y,m,d]=b.split('-').map(Number);const ay=(m===1||(m===2&&d<=3))?y-1:y;let s=String(ay).split('').reduce((a,c)=>a+parseInt(c),0);while(s>=10)s=String(s).split('').reduce((a,c)=>a+parseInt(c),0);const n=(11-s)%9||9;const names=['','1 White Water Star','2 Black Earth Star','3 Azure Wood Star','4 Green Wood Star','5 Yellow Earth Star','6 White Metal Star','7 Red Metal Star','8 White Earth Star','9 Purple Fire Star'];return{num:n,name:names[n]};}
+function getLifePathNumber(b){let n=b.replace(/-/g,'').split('').reduce((a,c)=>a+parseInt(c),0);while(n>9&&n!==11&&n!==22&&n!==33)n=String(n).split('').reduce((a,c)=>a+parseInt(c),0);return n;}
+window.onMysticLogin=()=>{
+  document.getElementById("app").style.display="block";
+  document.getElementById("target-date").value=new Date().toISOString().split("T")[0];
+};
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const birthdate=document.getElementById("birthdate").value;
+  const targetDate=document.getElementById("target-date").value;
+  if(!birthdate||!targetDate){alert("Please enter your date of birth and the target date");return;}
+  const sign=getSunSign(birthdate);
+  const ki=getNineStarKi(birthdate);
+  const lpn=getLifePathNumber(birthdate);
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Sun Sign: ${sign} / Birth Star: ${ki.name} / LPN: ${lpn}`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Reading the color fortune...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/lucky-color",{birthdate,targetDate,zodiacSign:sign,honmeisei:ki.name,lifePathNumber:lpn});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Tell Me My Lucky Color";}
+});
+</script>
+</body>
+</html>

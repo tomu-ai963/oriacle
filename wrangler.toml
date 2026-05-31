@@ -1,0 +1,9 @@
+name = "mystic-system-worker"
+main = "tomu-mystic-worker.js"
+compatibility_date = "2024-01-01"
+no_bundle = true
+account_id = "b6815ad2ee3097cc0f9e79b8536776b9"
+
+[[kv_namespaces]]
+binding = "MYSTIC_SUBSCRIPTIONS"
+id = "5e1c00cba16d46119b2123dc4dd23322"

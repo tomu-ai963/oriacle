@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Single Tarot Draw — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🃏</span>
+    <h1 class="app-title">Single Tarot Draw</h1>
+    <p class="app-desc">Still your mind and intuitively choose one card</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Choose one card</label>
+      <div class="symbol-grid" id="tarot-grid"></div>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Receive the Card's Message</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Tarot Message</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+
+const CARDS=[
+  ["The Fool","0"],["The Magician","I"],["The High Priestess","II"],["The Empress","III"],["The Emperor","IV"],["The Hierophant","V"],
+  ["The Lovers","VI"],["The Chariot","VII"],["Strength","VIII"],["The Hermit","IX"],["Wheel of Fortune","X"],["Justice","XI"],
+  ["The Hanged Man","XII"],["Death","XIII"],["Temperance","XIV"],["The Devil","XV"],["The Tower","XVI"],["The Star","XVII"],
+  ["The Moon","XVIII"],["The Sun","XIX"],["Judgement","XX"],["The World","XXI"]
+];
+
+let selected=null;
+const grid=document.getElementById("tarot-grid");
+CARDS.forEach(([name,num])=>{
+  const btn=document.createElement("button");
+  btn.className="symbol-btn";
+  btn.innerHTML=`<span class="symbol-glyph" style="font-size:.9rem">${num}</span>${name}`;
+  btn.addEventListener("click",()=>{
+    grid.querySelectorAll(".symbol-btn").forEach(b=>b.classList.remove("selected"));
+    btn.classList.add("selected");selected=name;
+  });
+  grid.appendChild(btn);
+});
+
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  if(!selected){alert("Please choose a card");return;}
+  // Determine upright / reversed in JS
+  const isReversed=Math.random()<0.3;
+  const orientation=isReversed?'Reversed':'Upright';
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Selected Card: ${selected} (${orientation})`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Reading the card...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/tarot",{card:selected,orientation});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Receive the Card's Message";}
+});
+</script>
+</body>
+</html>

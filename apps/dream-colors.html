@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Dream Colors Reading — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🎨</span>
+    <h1 class="app-title">Dream Colors Reading</h1>
+    <p class="app-desc">The colors that appeared in your dream carry messages from your subconscious</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Choose the colors that appeared in your dream (multiple OK)</label>
+      <div class="color-grid" id="color-grid"></div>
+    </div>
+    <div id="selected-colors" style="margin:.8rem 0;font-size:.82rem;color:var(--muted);min-height:1.4em"></div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Decode My Dream Colors</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Subconscious Message of the Colors</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+
+const COLORS=[
+  {name:"Red",hex:"#e05050"},{name:"Orange",hex:"#e08030"},{name:"Yellow",hex:"#e0c030"},
+  {name:"Yellow-Green",hex:"#80c040"},{name:"Green",hex:"#30a060"},{name:"Teal",hex:"#30a0a0"},
+  {name:"Blue",hex:"#3060e0"},{name:"Purple",hex:"#9040c0"},{name:"Pink",hex:"#e060a0"},
+  {name:"White",hex:"#e0e0e0"},{name:"Black",hex:"#404040"},{name:"Gold",hex:"#d4a020"},
+  {name:"Silver",hex:"#a0a0b0"},{name:"Brown",hex:"#804020"}
+];
+
+const sel=new Set();
+const grid=document.getElementById("color-grid");
+const selLabel=document.getElementById("selected-colors");
+
+COLORS.forEach(c=>{
+  const dot=document.createElement("div");
+  dot.className="color-dot";
+  dot.style.background=c.hex;
+  dot.title=c.name;
+  dot.addEventListener("click",()=>{
+    dot.classList.toggle("selected");
+    sel.has(c.name)?sel.delete(c.name):sel.add(c.name);
+    selLabel.textContent=sel.size>0?"Selected: "+[...sel].join(", "):"";
+  });
+  grid.appendChild(dot);
+});
+
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  if(sel.size===0){alert("Please choose at least one color");return;}
+  const colors=[...sel];
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Selected colors: ${colors.join(", ")}`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Decoding the colors...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/dream-colors",{colors});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Decode My Dream Colors";}
+});
+</script>
+</body>
+</html>

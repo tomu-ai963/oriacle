@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Moon Sign Reading — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🌙</span>
+    <h1 class="app-title">Moon Sign Reading</h1>
+    <p class="app-desc">Your moon sign illuminates your subconscious and emotional patterns</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Date of Birth</label>
+      <input type="date" id="birthdate"/>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Read My Moon Sign</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Moon Sign Message</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+function getSunSign(b){const[,m,d]=b.split('-').map(Number);if((m===3&&d>=21)||(m===4&&d<=19))return'Aries';if((m===4&&d>=20)||(m===5&&d<=20))return'Taurus';if((m===5&&d>=21)||(m===6&&d<=21))return'Gemini';if((m===6&&d>=22)||(m===7&&d<=22))return'Cancer';if((m===7&&d>=23)||(m===8&&d<=22))return'Leo';if((m===8&&d>=23)||(m===9&&d<=22))return'Virgo';if((m===9&&d>=23)||(m===10&&d<=23))return'Libra';if((m===10&&d>=24)||(m===11&&d<=22))return'Scorpio';if((m===11&&d>=23)||(m===12&&d<=21))return'Sagittarius';if((m===12&&d>=22)||(m===1&&d<=19))return'Capricorn';if((m===1&&d>=20)||(m===2&&d<=18))return'Aquarius';return'Pisces';}
+function getLifePathNumber(b){let n=b.replace(/-/g,'').split('').reduce((a,c)=>a+parseInt(c),0);while(n>9&&n!==11&&n!==22&&n!==33)n=String(n).split('').reduce((a,c)=>a+parseInt(c),0);return n;}
+// Moon sign calculated precisely (base: 2000-01-01 lunar ecliptic longitude ≈218.32°, avg speed 13.1764°/day)
+function getMoonSign(b){
+  const ref=Date.UTC(2000,0,1);
+  const[y,m,d]=b.split('-').map(Number);
+  const diff=(Date.UTC(y,m-1,d)-ref)/86400000;
+  const lon=((218.32+diff*13.1764)%360+360)%360;
+  const signs=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+  return signs[Math.floor(lon/30)];
+}
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const v=document.getElementById("birthdate").value;
+  if(!v){alert("Please enter your date of birth");return;}
+  const sign=getSunSign(v);
+  const lpn=getLifePathNumber(v);
+  const moonSign=getMoonSign(v);
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Sun Sign: ${sign} / Moon Sign: ${moonSign} / LPN: ${lpn}`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Reading the moon...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/moon-sign",{birthdate:v,zodiacSign:sign,lifePathNumber:lpn,moonSign});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Read My Moon Sign";}
+});
+</script>
+</body>
+</html>

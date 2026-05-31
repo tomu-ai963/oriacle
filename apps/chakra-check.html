@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Chakra Reading — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🔮</span>
+    <h1 class="app-title">Chakra Reading</h1>
+    <p class="app-desc">Identify blockages in your 7 energy centers and show you the path to release</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Which area of your body or symptoms concern you lately?</label>
+      <div class="options-grid" id="q1-grid"></div>
+    </div>
+    <div class="field-group">
+      <label>Where do you feel emotionally stuck?</label>
+      <div class="options-grid" id="q2-grid"></div>
+    </div>
+    <div class="field-group">
+      <label>What life theme do you most want to focus on?</label>
+      <div class="options-grid" id="q3-grid"></div>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;line-height:1.6;"></div>
+    <button class="submit-btn" id="submit-btn">Read My Chakras</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Chakra Reading Result</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+// Map symptoms to corresponding chakra
+const CHAKRA_MAP={
+  "Head / Eyes / Ears":         {num:"6th·7th",name:"Third Eye / Crown Chakra"},
+  "Throat / Neck":              {num:"5th",    name:"Throat Chakra"},
+  "Chest / Heart":              {num:"4th",    name:"Heart Chakra"},
+  "Solar Plexus / Stomach":     {num:"3rd",    name:"Solar Plexus Chakra"},
+  "Abdomen / Intestines":       {num:"2nd",    name:"Sacral Chakra"},
+  "Lower Abdomen":              {num:"1st",    name:"Root Chakra"},
+  "Legs / Knees / Lower Back":  {num:"1st",    name:"Root Chakra"},
+};
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+
+function makeOpts(gid,opts,cb){
+  const g=document.getElementById(gid);
+  opts.forEach(o=>{
+    const btn=document.createElement("button");
+    btn.className="opt-btn";btn.textContent=o;
+    btn.addEventListener("click",()=>{
+      g.querySelectorAll(".opt-btn").forEach(b=>b.classList.remove("selected"));
+      btn.classList.add("selected");cb(o);
+    });
+    g.appendChild(btn);
+  });
+}
+let a1=null,a2=null,a3=null;
+makeOpts("q1-grid",["Head / Eyes / Ears","Throat / Neck","Chest / Heart","Solar Plexus / Stomach","Abdomen / Intestines","Lower Abdomen","Legs / Knees / Lower Back"],v=>a1=v);
+makeOpts("q2-grid",["Unable to express myself","Uncertain if I am loved","Lacking self-confidence","Emotions boiling over","Fear about money or safety","Goals not defined","Loneliness / disconnection"],v=>a2=v);
+makeOpts("q3-grid",["Opening Intuition & Spirituality","Communication & Expression","Unconditional Love & Healing","Willpower & Action","Emotions & Creativity","Security & Abundance","Grounding & Stability"],v=>a3=v);
+
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  if(!a1||!a2||!a3){alert("Please answer all questions");return;}
+  const chakra=CHAKRA_MAP[a1]||{num:"Unknown",name:"Unknown"};
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Identified Chakra: ${chakra.name} (${chakra.num}) / Emotion: ${a2} / Theme: ${a3}`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Reading your chakras...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/chakra-check",{answers:{q1:a1,q2:a2,q3:a3},chakra:chakra.name,chakraNum:chakra.num});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Read My Chakras";}
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Past Life Profession — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">⚔️</span>
+    <h1 class="app-title">Past Life Profession</h1>
+    <p class="app-desc">Reveal the role and mission you carried in your past life</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>What activity do you feel most naturally drawn to?</label>
+      <div class="options-grid" id="q1-grid"></div>
+    </div>
+    <div class="field-group">
+      <label>Skills or knowledge you feel you had in a past life?</label>
+      <input type="text" id="q2" placeholder="e.g. knowledge of herbs, swordsmanship, reading the stars..."/>
+    </div>
+    <div class="field-group">
+      <label>A strong intuition or sense of mission about work?</label>
+      <input type="text" id="q3" placeholder="e.g. I want to protect people, I want to convey the truth..."/>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;line-height:1.6;"></div>
+    <button class="submit-btn" id="submit-btn">Decode My Past Life Profession</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Past Life Profession &amp; Soul Memory</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+
+const OPTS=["Healing and helping others","Teaching and sharing knowledge","Protecting and fighting","Creating and building","Ritual, prayer, and connection","Exploring and traveling"];
+let selQ1=null;
+const g=document.getElementById("q1-grid");
+OPTS.forEach(o=>{
+  const btn=document.createElement("button");
+  btn.className="opt-btn";btn.textContent=o;
+  btn.addEventListener("click",()=>{
+    g.querySelectorAll(".opt-btn").forEach(b=>b.classList.remove("selected"));
+    btn.classList.add("selected");selQ1=o;
+  });
+  g.appendChild(btn);
+});
+
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const q2=document.getElementById("q2").value.trim();
+  const q3=document.getElementById("q3").value.trim();
+  if(!selQ1){alert("Please answer the first question");return;}
+  const cd=document.getElementById("calc-display");
+  const lines=[`Tendency: ${selQ1}`];
+  if(q2)lines.push(`Skills: ${q2}`);
+  if(q3)lines.push(`Sense of mission: ${q3}`);
+  cd.textContent=lines.join(" / ");cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Searching the soul's records...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/past-profession",{answers:{q1:selQ1,q2,q3}});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Decode My Past Life Profession";}
+});
+</script>
+</body>
+</html>

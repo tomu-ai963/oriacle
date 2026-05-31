@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Moon Phase Journal — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">📔</span>
+    <h1 class="app-title">Moon Phase Journal</h1>
+    <p class="app-desc">Today's lunar energy delivers prompts for reflection and a message just for you</p>
+  </div>
+  <div class="card">
+    <div style="text-align:center;padding:1rem 0;margin-bottom:1rem">
+      <div style="font-size:3rem;margin-bottom:.5rem" id="moon-phase-icon">🌙</div>
+      <div style="color:var(--muted);font-size:.85rem" id="today-date"></div>
+    </div>
+    <p style="color:var(--muted);font-size:.9rem;text-align:center;margin-bottom:1.5rem">
+      Channeling today's lunar energy.<br>Quiet your mind and open yourself to receive.
+    </p>
+    <button class="submit-btn" id="submit-btn">Receive the Moon's Message</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Questions from the Moon</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+// Moon phase calculated precisely (base: 2000-01-06 new moon)
+function getMoonPhase(){
+  const ref=Date.UTC(2000,0,6);
+  const diff=(Date.now()-ref)/86400000;
+  const phase=((diff%29.53)+29.53)%29.53;
+  const names=['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous','Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];
+  const icons=['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+  const idx=Math.floor(phase/(29.53/8))%8;
+  return{name:names[idx],icon:icons[idx],age:Math.round(phase)};
+}
+window.onMysticLogin=()=>{
+  document.getElementById("app").style.display="block";
+  const now=new Date();
+  document.getElementById("today-date").textContent=now.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric",weekday:"long"});
+  const mp=getMoonPhase();
+  document.getElementById("moon-phase-icon").textContent=mp.icon;
+};
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const today=new Date().toISOString().split("T")[0];
+  const mp=getMoonPhase();
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Connecting to the moon...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/moon-journal",{today,moonPhase:mp.name,moonAge:mp.age});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Receive the Moon's Message";}
+});
+</script>
+</body>
+</html>

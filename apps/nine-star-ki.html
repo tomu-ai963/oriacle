@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Nine Star Ki — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">☯️</span>
+    <h1 class="app-title">Nine Star Ki</h1>
+    <p class="app-desc">From 1 White Water Star to 9 Purple Fire Star — your birth star speaks your destiny</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Date of Birth</label>
+      <input type="date" id="birthdate"/>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Read My Birth Star</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Nine Star Ki Message</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+function getNineStarKi(b){const[y,m,d]=b.split('-').map(Number);const ay=(m===1||(m===2&&d<=3))?y-1:y;let s=String(ay).split('').reduce((a,c)=>a+parseInt(c),0);while(s>=10)s=String(s).split('').reduce((a,c)=>a+parseInt(c),0);const n=(11-s)%9||9;const names=['','1 White Water Star','2 Black Earth Star','3 Azure Wood Star','4 Green Wood Star','5 Yellow Earth Star','6 White Metal Star','7 Red Metal Star','8 White Earth Star','9 Purple Fire Star'];return{num:n,name:names[n]};}
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const v=document.getElementById("birthdate").value;
+  if(!v){alert("Please enter your date of birth");return;}
+  const ki=getNineStarKi(v);
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Birth Star: ${ki.name} (${ki.num})`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Reading the flow of ki...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/nine-star-ki",{birthdate:v,honmeisei:ki.name,honmeiseiNum:ki.num});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Read My Birth Star";}
+});
+</script>
+</body>
+</html>

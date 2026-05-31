@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Numerology Reading — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🔢</span>
+    <h1 class="app-title">Numerology Reading</h1>
+    <p class="app-desc">Decode your soul's Life Path Number from your name and date of birth</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Name (phonetic reading)</label>
+      <input type="text" id="name" placeholder="e.g. yamadahanako"/>
+    </div>
+    <div class="field-group">
+      <label>Date of Birth</label>
+      <input type="date" id="birthdate"/>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Decode the Number's Secret</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Soul Number Message</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+function getLifePathNumber(b){let n=b.replace(/-/g,'').split('').reduce((a,c)=>a+parseInt(c),0);while(n>9&&n!==11&&n!==22&&n!==33)n=String(n).split('').reduce((a,c)=>a+parseInt(c),0);return n;}
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const name=document.getElementById("name").value.trim();
+  const birthdate=document.getElementById("birthdate").value;
+  if(!name||!birthdate){alert("Please enter your name and date of birth");return;}
+  const lpn=getLifePathNumber(birthdate);
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Life Path Number: ${lpn}`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Analyzing the numbers...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/numerology",{name,birthdate,lifePathNumber:lpn});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Decode the Number's Secret";}
+});
+</script>
+</body>
+</html>

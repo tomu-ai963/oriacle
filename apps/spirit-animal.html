@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Spirit Animal Reading — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🦋</span>
+    <h1 class="app-title">Spirit Animal Reading</h1>
+    <p class="app-desc">Your guardian spirit animal brings a message for your soul</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Which natural environment calls to you most?</label>
+      <div class="options-grid" id="q1-grid"></div>
+    </div>
+    <div class="field-group">
+      <label>What is your greatest strength?</label>
+      <div class="options-grid" id="q2-grid"></div>
+    </div>
+    <div class="field-group">
+      <label>When facing difficulty, you tend to…</label>
+      <div class="options-grid" id="q3-grid"></div>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;line-height:1.6;"></div>
+    <button class="submit-btn" id="submit-btn">Find My Guardian Spirit Animal</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Message from Your Spirit Animal</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+window.onMysticLogin=()=>document.getElementById("app").style.display="block";
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+
+function makeOpts(gridId,opts,cb){
+  const g=document.getElementById(gridId);
+  opts.forEach(o=>{
+    const btn=document.createElement("button");
+    btn.className="opt-btn";btn.textContent=o;
+    btn.addEventListener("click",()=>{
+      g.querySelectorAll(".opt-btn").forEach(b=>b.classList.remove("selected"));
+      btn.classList.add("selected");cb(o);
+    });
+    g.appendChild(btn);
+  });
+}
+let a1=null,a2=null,a3=null;
+makeOpts("q1-grid",["Deep Forest","Vast Ocean","Open Sky","Wide Plains","High Mountain Peak"],v=>a1=v);
+makeOpts("q2-grid",["Deep Wisdom & Insight","Strength & Courage","Speed & Wit","Deep Love & Loyalty","Healing & Empathy"],v=>a2=v);
+makeOpts("q3-grid",["Quietly reflect to find the answer","Call on companions and unite your strength","Follow instinct and take action","Surrender to the flow and await change","Oversee the whole from a higher perspective"],v=>a3=v);
+
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  if(!a1||!a2||!a3){alert("Please answer all questions");return;}
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Nature: ${a1} / Strength: ${a2} / In difficulty: ${a3}`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Calling the spirit...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/spirit-animal",{answers:{q1:a1,q2:a2,q3:a3}});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Find My Guardian Spirit Animal";}
+});
+</script>
+</body>
+</html>

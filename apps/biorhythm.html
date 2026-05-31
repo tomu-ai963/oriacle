@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Biorhythm — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">📈</span>
+    <h1 class="app-title">Biorhythm</h1>
+    <p class="app-desc">Three rhythms — physical, emotional, intellectual — speak about you today</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Date of Birth</label>
+      <input type="date" id="birthdate"/>
+    </div>
+    <div class="field-group">
+      <label>Date to Read</label>
+      <input type="date" id="target-date"/>
+    </div>
+    <div class="bio-canvas-wrap" id="canvas-wrap" style="display:none">
+      <canvas id="bio-canvas" height="180"></canvas>
+    </div>
+    <div class="bio-legend">
+      <span class="phys">Physical (23 days)</span>
+      <span class="emot">Emotional (28 days)</span>
+      <span class="intl">Intellectual (33 days)</span>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Calculate Biorhythm</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Today's Biorhythm Reading</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+window.onMysticLogin=()=>{
+  document.getElementById("app").style.display="block";
+  document.getElementById("target-date").value=new Date().toISOString().split("T")[0];
+};
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+
+function calcBio(birthdate,targetDate){
+  const b=new Date(birthdate),t=new Date(targetDate);
+  const days=Math.floor((t-b)/(1000*60*60*24));
+  const phys=Math.round(Math.sin(2*Math.PI*days/23)*100);
+  const emot=Math.round(Math.sin(2*Math.PI*days/28)*100);
+  const intl=Math.round(Math.sin(2*Math.PI*days/33)*100);
+  return{days,phys,emot,intl};
+}
+
+function drawGraph(birthdate,targetDate){
+  const canvas=document.getElementById("bio-canvas");
+  const wrap=document.getElementById("canvas-wrap");
+  wrap.style.display="block";
+  canvas.width=wrap.offsetWidth||600;
+  const ctx=canvas.getContext("2d");
+  const W=canvas.width,H=canvas.height,mid=H/2,days=30;
+  ctx.fillStyle="#0d0d1e";ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle="#2a2a4a";ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,mid);ctx.lineTo(W,mid);ctx.stroke();
+  const b=new Date(birthdate),t=new Date(targetDate);
+  const startDays=Math.floor((t-b)/(1000*60*60*24))-days/2;
+  const step=W/days;
+  const drawCurve=(cycle,color)=>{
+    ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;
+    for(let i=0;i<=days;i++){
+      const x=i*step;
+      const y=mid-Math.sin(2*Math.PI*(startDays+i)/cycle)*(mid-12);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  };
+  drawCurve(23,"#7ec8e3");drawCurve(28,"#c49bff");drawCurve(33,"#f0d080");
+  // Today's line
+  const todayX=(days/2)*step;
+  ctx.strokeStyle="rgba(255,255,255,.4)";ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(todayX,0);ctx.lineTo(todayX,H);ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const birthdate=document.getElementById("birthdate").value;
+  const targetDate=document.getElementById("target-date").value;
+  if(!birthdate||!targetDate){alert("Please enter your date of birth and the target date");return;}
+  const{phys,emot,intl}=calcBio(birthdate,targetDate);
+  drawGraph(birthdate,targetDate);
+  const cd=document.getElementById("calc-display");
+  cd.textContent=`Physical: ${phys}% / Emotional: ${emot}% / Intellectual: ${intl}%`;cd.style.display="block";
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Analyzing your rhythms...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{
+    const d=await MysticAuth.callApi("/mystic/biorhythm",{birthdate,targetDate,physical:phys,emotional:emot,intellectual:intl});
+    rt.textContent=d.result;
+  }
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Calculate Biorhythm";}
+});
+</script>
+</body>
+</html>

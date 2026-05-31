@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Animal Fortune — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">🐾</span>
+    <h1 class="app-title">Animal Fortune</h1>
+    <p class="app-desc">Your date of birth reveals your guardian animal</p>
+  </div>
+  <div class="card">
+    <div class="field-group">
+      <label>Date of Birth</label>
+      <input type="date" id="birthdate" min="1921-01-01" max="2030-12-31"/>
+    </div>
+    <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
+    <button class="submit-btn" id="submit-btn">Find My Guardian Animal</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Message from Your Guardian Animal</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+// ========== Serial date calculation (Excel serial date base) ==========
+function getSerialDate(y, m, d) {
+  const base = new Date(1899, 11, 31); // 1899/12/31
+  const target = new Date(y, m - 1, d);
+  return Math.round((target - base) / 86400000);
+}
+
+// ========== Animal character map (60 types, official order) ==========
+const animalMap = {
+   1: 'Long-distance Runner Cheetah',
+   2: 'Sociable Raccoon',
+   3: 'Restless Monkey',
+   4: 'Light-footed Koala',
+   5: 'Caring Black Panther',
+   6: 'Loving Tiger',
+   7: 'Full-speed Cheetah',
+   8: 'Polished Raccoon',
+   9: 'Ambitious Monkey',
+  10: 'Nurturing Koala',
+  11: 'Honest Fawn',
+  12: 'Popular Elephant',
+  13: 'Cheerful Wolf',
+  14: 'Uncooperative Sheep',
+  15: 'Steady Monkey',
+  16: 'Koala of Koalas',
+  17: 'Strong-willed Fawn',
+  18: 'Delicate Elephant',
+  19: 'Wandering Wolf',
+  20: 'Quiet Sheep',
+  21: 'Composed Pegasus',
+  22: 'Strong-winged Pegasus',
+  23: 'Carefree Sheep',
+  24: 'Creative Wolf',
+  25: 'Gentle Wolf',
+  26: 'Tenacious Sheep',
+  27: 'Turbulent Pegasus',
+  28: 'Graceful Pegasus',
+  29: 'Challenging Sheep',
+  30: 'Adaptable Wolf',
+  31: 'Leading Elephant',
+  32: 'Reliable Fawn',
+  33: 'Active Koala',
+  34: 'Temperamental Monkey',
+  35: 'Appreciated Sheep',
+  36: 'Likeable Wolf',
+  37: 'Relentless Elephant',
+  38: 'Glamorous Fawn',
+  39: 'Dreamy Koala',
+  40: 'Devoted Monkey',
+  41: 'Late-blooming Raccoon',
+  42: 'Sturdy Cheetah',
+  43: 'Active Tiger',
+  44: 'Passionate Black Panther',
+  45: 'Service-minded Koala',
+  46: 'Defensive Monkey',
+  47: 'Humane Raccoon',
+  48: 'Distinguished Cheetah',
+  49: 'Calm and Stately Tiger',
+  50: 'Easily Discouraged Black Panther',
+  51: 'Independent Lion',
+  52: 'Leading Lion',
+  53: 'Emotionally Rich Black Panther',
+  54: 'Optimistic Tiger',
+  55: 'Powerful Tiger',
+  56: 'Unpretentious Black Panther',
+  57: 'Emotional Lion',
+  58: 'Vulnerable Lion',
+  59: 'Freedom-loving Black Panther',
+  60: 'Compassionate Tiger',
+};
+
+// ========== Calculation logic (Excel serial date ÷ 60) ==========
+function getAnimalFortune(birthdate) {
+  const [y, m, d] = birthdate.split('-').map(Number);
+  const serial = getSerialDate(y, m, d);
+  const num = ((serial + 9) % 60) + 1;
+  return { num, animal: animalMap[num] };
+}
+
+window.onMysticLogin = () => document.getElementById("app").style.display = "block";
+document.getElementById("logout-btn").addEventListener("click", () => { MysticAuth.logout(); location.reload(); });
+
+const birthdateEl = document.getElementById("birthdate");
+const cdEl        = document.getElementById("calc-display");
+
+function updateCalcDisplay() {
+  const birthdate = birthdateEl.value;
+  if (!birthdate) { cdEl.style.display = "none"; return; }
+  const r = getAnimalFortune(birthdate);
+  if (!r) { cdEl.style.display = "none"; return; }
+  cdEl.textContent = `Guardian Animal: ${r.animal}`;
+  cdEl.style.display = "block";
+}
+
+birthdateEl.addEventListener("change", updateCalcDisplay);
+
+document.getElementById("submit-btn").addEventListener("click", async () => {
+  const birthdate = birthdateEl.value;
+  if (!birthdate) { alert("Please enter your date of birth"); return; }
+  const r = getAnimalFortune(birthdate);
+  if (!r) { alert("Invalid date"); return; }
+  const btn = document.getElementById("submit-btn");
+  const res = document.getElementById("result");
+  const rt  = document.getElementById("result-text");
+  btn.disabled = true; btn.textContent = "Searching for your animal...";
+  res.classList.remove("hidden"); rt.innerHTML = '<span class="loading">✦ ✦ ✦</span>';
+  try {
+    const d = await MysticAuth.callApi("/mystic/animal-fortune", { birthdate, animal: r.animal });
+    rt.textContent = d.result;
+  } catch(e) {
+    rt.style.color = "var(--error)"; rt.textContent = "Error: " + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Find My Guardian Animal";
+  }
+});
+</script>
+</body>
+</html>

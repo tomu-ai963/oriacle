@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Today's Cosmic Message — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<script src="/mystic-system/common/header.js"></script>
+</head>
+<body>
+<header>
+  <a href="../index.html" class="logo">✦ Oriacle</a>
+  <button class="logout-btn" id="logout-btn">Logout</button>
+</header>
+<main id="app" style="display:none">
+  <div class="app-hero">
+    <span class="app-icon">✨</span>
+    <h1 class="app-title">Today's Cosmic Message</h1>
+    <p class="app-desc">Right now, in this very moment, the universe has a message it wants to deliver to you</p>
+  </div>
+  <div class="card">
+    <div style="text-align:center;padding:1.5rem 0 1rem">
+      <div style="font-size:.85rem;color:var(--muted)" id="today-date"></div>
+      <div style="font-size:1rem;color:var(--accent);letter-spacing:.2em;margin-top:.5rem">✦ A Time to Connect with Universal Consciousness ✦</div>
+    </div>
+    <p style="color:var(--muted);font-size:.9rem;text-align:center;margin-bottom:1.5rem;line-height:1.9">
+      Take a deep breath and prepare to<br>quietly receive the words from the universe.
+    </p>
+    <button class="submit-btn" id="submit-btn">Receive Today's Message</button>
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Today's Message from the Universe</div>
+      <div id="result-text"></div>
+    </div>
+  </div>
+</main>
+<script src="../mystic-login.js"></script>
+<script>
+// Today's cosmic number (reduce today's digits to a single digit)
+function getCosmicNumber(dateStr){
+  let n=dateStr.replace(/-/g,'').split('').reduce((a,c)=>a+parseInt(c),0);
+  while(n>9&&n!==11&&n!==22)n=String(n).split('').reduce((a,c)=>a+parseInt(c),0);
+  return n;
+}
+window.onMysticLogin=()=>{
+  document.getElementById("app").style.display="block";
+  const now=new Date();
+  document.getElementById("today-date").textContent=now.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric",weekday:"long"});
+};
+document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
+document.getElementById("submit-btn").addEventListener("click",async()=>{
+  const today=new Date().toISOString().split("T")[0];
+  const cosmicNumber=getCosmicNumber(today);
+  const btn=document.getElementById("submit-btn");
+  const res=document.getElementById("result");
+  const rt=document.getElementById("result-text");
+  btn.disabled=true;btn.textContent="Receiving the voice of the universe...";
+  res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
+  try{const d=await MysticAuth.callApi("/mystic/cosmic-message",{today,cosmicNumber});rt.textContent=d.result;}
+  catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
+  finally{btn.disabled=false;btn.textContent="Receive Today's Message";}
+});
+</script>
+</body>
+</html>
