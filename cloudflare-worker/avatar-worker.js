@@ -12,12 +12,12 @@ const CORS_HEADERS = {
 };
 
 const GENRE_KEYWORDS = {
-  cosmic: "cosmic traveler, starfield aura",
-  witch: "mystical witch, dark magic, moon witch",
-  sage: "ancient sage, wisdom, ethereal light",
-  angel: "celestial angel, divine light, wings",
-  dragon: "eastern dragon spirit, mystical Asia",
-  shrine: "Japanese shrine maiden, sakura spirit",
+  cosmic: "cosmic traveler, celestial energy, galaxy aura, stars, nebula light, universe spirit",
+  witch: "mystical witch, moon magic, glowing runes, enchanted forest, dark elegance",
+  sage: "ancient sage, wisdom energy, sacred light, ethereal glow, mystical knowledge",
+  angel: "celestial angel, divine glow, heavenly aura, ethereal feathers, sacred light",
+  dragon: "eastern dragon spirit, golden dragon energy, mystical eastern fantasy, sacred mist",
+  shrine: "Japanese shrine maiden, sacred sakura petals, spiritual shrine aura, moonlit sanctuary",
 };
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -83,12 +83,25 @@ export default {
       return errorResponse("Photo must be 5MB or smaller ｜ 写真は5MB以内にしてください", 400);
     }
 
-    const prompt = [
-      "anime style portrait,", keywords + ",",
-      "soft spiritual atmosphere, Studio Ghibli inspired aesthetic,",
-      "NOT photorealistic, gentle luminous colors,",
-      "mystical background, high quality illustration",
-    ].join(" ");
+    const prompt = `
+Create this person's higher spiritual self as a beautiful anime portrait.
+
+Preserve the person's identity and recognizable facial features.
+The result should feel like an idealized spiritual version of the same person.
+Do not create a different person. Do not dramatically alter facial structure.
+
+Natural beauty enhancement:
+- clear expressive eyes
+- healthy glowing skin
+- balanced facial proportions
+- elegant anime styling
+
+${keywords}
+
+Mystical aura. Sacred energy. Dreamlike celestial atmosphere.
+Fantasy lighting. High-quality anime illustration.
+Profile picture quality. Centered portrait.
+`;
 
     const extension = mimeType === "image/png" ? "png" : "jpg";
     const form = new FormData();
