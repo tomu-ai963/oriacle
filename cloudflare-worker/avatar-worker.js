@@ -1,6 +1,6 @@
 // ============================================
 // Oriacle — Spiritual Avatar Worker
-// Relays selfie + genre to OpenAI gpt-image-1 (image edit)
+// Relays selfie + genre to OpenAI gpt-image-1-mini (image edit)
 // and returns the generated anime-style avatar.
 // ES Module format for Cloudflare Workers
 // ============================================
@@ -181,7 +181,7 @@ Profile picture quality. Centered portrait.
 
     const extension = mimeType === "image/png" ? "png" : "jpg";
     const form = new FormData();
-    form.append("model", "gpt-image-1");
+    form.append("model", "gpt-image-1-mini");
     form.append("image", new Blob([bytes], { type: mimeType }), `selfie.${extension}`);
     form.append("prompt", prompt);
     form.append("size", "1024x1024");
