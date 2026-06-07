@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Spiritual Avatar Generator — Oriacle</title>
+<link rel="stylesheet" href="../mystic.css"/>
+<style>
+  .genre-grid {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: .6rem;
+    margin-top: .4rem;
+  }
+  .genre-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem .5rem;
+    text-align: center;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--muted);
+    transition: border-color .2s, color .2s, background .2s, transform .15s;
+  }
+  .genre-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+  .genre-btn.selected {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(240,208,128,.08);
+  }
+  .genre-icon { font-size: 1.6rem; display: block; margin-bottom: .35rem; }
+  .genre-en { font-size: .78rem; letter-spacing: .04em; display: block; }
+  .genre-jp { font-size: .68rem; color: var(--muted); display: block; margin-top: .15rem; }
+  .genre-btn.selected .genre-jp { color: var(--gold); opacity: .8; }
+
+  #generate-btn:not(:disabled) { animation: glow 2.4s ease-in-out infinite; }
+  @keyframes glow {
+    0%,100% { box-shadow: 0 0 0 rgba(196,155,255,0); }
+    50% { box-shadow: 0 0 18px rgba(196,155,255,.35); }
+  }
+
+  .loading-orbit {
+    text-align: center;
+    padding: 1.5rem 0;
+    color: var(--accent);
+  }
+  .loading-orbit .orb {
+    font-size: 1.6rem;
+    display: inline-block;
+    animation: orbit 1.6s ease-in-out infinite;
+  }
+  .loading-orbit .orb:nth-child(2) { animation-delay: .2s; }
+  .loading-orbit .orb:nth-child(3) { animation-delay: .4s; }
+  @keyframes orbit {
+    0%,100% { opacity: .3; transform: translateY(0) scale(.9); }
+    50% { opacity: 1; transform: translateY(-6px) scale(1.1); }
+  }
+  .loading-note { margin-top: .6rem; font-size: .8rem; color: var(--muted); letter-spacing: .06em; }
+
+  #avatar-result {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    display: none;
+  }
+  .download-link {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    margin-top: 1rem;
+  }
+</style>
+</head>
+<body>
+<header>
+  <a href="../app.html" class="logo">✦ Oriacle</a>
+</header>
+<main id="app">
+  <div class="app-hero">
+    <span class="app-icon">🌙</span>
+    <h1 class="app-title">Spiritual Avatar Generator</h1>
+    <p class="app-desc">Turn your photo into a mystical anime spirit ｜ あなたの写真をスピリチュアルなアニメアバターに</p>
+  </div>
+
+  <div class="card">
+    <div class="field-group">
+      <label>1. Choose your spiritual genre ｜ ジャンルを選択</label>
+      <div class="genre-grid" id="genre-grid"></div>
+    </div>
+
+    <div class="field-group">
+      <label>2. Upload your photo ｜ 写真をアップロード（JPG/PNG, 5MB以内）</label>
+      <div class="upload-zone" id="upload-zone">
+        <span class="upload-icon">📷</span>
+        <span class="upload-label">Tap to take a photo or choose from your gallery<br>写真を撮影する、またはギャラリーから選択</span>
+        <img id="upload-preview" alt="preview"/>
+      </div>
+      <input type="file" id="file-input" accept="image/jpeg,image/png" capture="environment" style="display:none"/>
+    </div>
+
+    <button class="submit-btn" id="generate-btn" disabled>✦ Generate My Spirit Avatar ｜ アバターを生成 ✦</button>
+
+    <div id="result" class="result hidden">
+      <div class="result-label">▷ Your Spiritual Avatar</div>
+      <div id="result-area"></div>
+    </div>
+  </div>
+</main>
+<script>
+const WORKER_URL = "https://avatar-worker.inverted-triangle-leef.workers.dev";
+
+const GENRES = [
+  { id: "cosmic", icon: "🌌", en: "Cosmic", jp: "宇宙・星" },
+  { id: "witch",  icon: "🧙", en: "Witch",  jp: "魔女" },
+  { id: "sage",   icon: "🔮", en: "Sage",   jp: "賢者" },
+  { id: "angel",  icon: "👼", en: "Angel",  jp: "天使" },
+  { id: "dragon", icon: "🐉", en: "Dragon", jp: "龍・東洋神秘" },
+  { id: "shrine", icon: "🌸", en: "Shrine", jp: "巫女・神社" },
+];
+
+let selectedGenre = null;
+let imageDataUrl = null;
+
+const grid = document.getElementById("genre-grid");
+GENRES.forEach(g => {
+  const btn = document.createElement("button");
+  btn.className = "genre-btn";
+  btn.innerHTML = `<span class="genre-icon">${g.icon}</span><span class="genre-en">${g.en}</span><span class="genre-jp">${g.jp}</span>`;
+  btn.addEventListener("click", () => {
+    grid.querySelectorAll(".genre-btn").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    selectedGenre = g.id;
+    refreshGenerateButton();
+  });
+  grid.appendChild(btn);
+});
+
+const zone = document.getElementById("upload-zone");
+const fileInput = document.getElementById("file-input");
+const preview = document.getElementById("upload-preview");
+
+zone.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", e => handleFile(e.target.files[0]));
+
+function handleFile(file) {
+  if (!file || !/^image\/(jpeg|png)$/.test(file.type)) {
+    alert("Please choose a JPG or PNG image ｜ JPGまたはPNG画像を選択してください");
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    alert("Image must be 5MB or smaller ｜ 画像は5MB以内にしてください");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    imageDataUrl = e.target.result;
+    preview.src = imageDataUrl;
+    preview.style.display = "block";
+    zone.classList.add("has-image");
+    zone.querySelector(".upload-icon").style.display = "none";
+    zone.querySelector(".upload-label").style.display = "none";
+    refreshGenerateButton();
+  };
+  reader.readAsDataURL(file);
+}
+
+function refreshGenerateButton() {
+  document.getElementById("generate-btn").disabled = !(selectedGenre && imageDataUrl);
+}
+
+document.getElementById("generate-btn").addEventListener("click", async () => {
+  if (!selectedGenre || !imageDataUrl) return;
+  const btn = document.getElementById("generate-btn");
+  const result = document.getElementById("result");
+  const area = document.getElementById("result-area");
+
+  btn.disabled = true;
+  btn.textContent = "✦ Channeling your spirit... ✦";
+  result.classList.remove("hidden");
+  area.innerHTML = `
+    <div class="loading-orbit">
+      <span class="orb">🌟</span><span class="orb">🌙</span><span class="orb">✨</span>
+      <div class="loading-note">Drawing your spiritual energy into form...<br>あなたの霊的なエネルギーを形にしています…</div>
+    </div>`;
+
+  try {
+    const res = await fetch(`${WORKER_URL}/avatar/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageDataUrl, genre: selectedGenre }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.image) {
+      throw new Error(data.error || "Generation failed ｜ 生成に失敗しました");
+    }
+    area.innerHTML = `
+      <img id="avatar-result" alt="Generated spiritual avatar" src="${data.image}" style="display:block">
+      <a class="submit-btn download-link" id="download-link" href="${data.image}" download="oriacle-spirit-avatar.png">⬇ Download for your SNS profile ｜ SNSプロフィール用にダウンロード</a>`;
+  } catch (err) {
+    area.innerHTML = `<p style="color:var(--error);font-size:.9rem;line-height:1.8;">
+      ${err.message}<br>
+      <span style="color:var(--muted);font-size:.8rem;">Please try again in a moment ｜ しばらくしてから再度お試しください</span>
+    </p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "✦ Generate My Spirit Avatar ｜ アバターを生成 ✦";
+  }
+});
+</script>
+</body>
+</html>
