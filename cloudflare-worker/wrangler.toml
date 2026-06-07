@@ -1,0 +1,7 @@
+name = "oriacle-avatar-worker"
+main = "avatar-worker.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "AVATAR_RATE_LIMIT"
+id = "★後で差し替え★"

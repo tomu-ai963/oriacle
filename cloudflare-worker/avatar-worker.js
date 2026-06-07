@@ -23,15 +23,78 @@ const GENRE_KEYWORDS = {
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const DATA_URL_RE = /^data:(image\/(?:png|jpeg));base64,(.+)$/;
 
-function jsonResponse(data, status = 200) {
+function jsonResponse(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS, ...extraHeaders },
   });
 }
 
-function errorResponse(message, status) {
-  return jsonResponse({ error: message }, status);
+function errorResponse(message, status, extraHeaders = {}) {
+  return jsonResponse({ error: message }, status, extraHeaders);
+}
+
+// ============================================
+// Rate limiting (Cloudflare KV: AVATAR_RATE_LIMIT)
+// Tracks generations per IP per calendar month.
+// Keyed by tier so a future paid plan can grant a higher monthly limit
+// without changing the limiting logic itself — just add an entry here
+// and teach resolveTier() to recognize subscribed users.
+// ============================================
+const RATE_LIMIT_TTL_SECONDS = 35 * 24 * 60 * 60; // ~35 days — keys expire into the next month on their own
+
+const TIER_LIMITS = {
+  free: 3,
+  // paid: 30, // reserved for a future paid tier
+};
+
+function resolveTier(request, env) {
+  // Everyone is on the free tier for now. A future paid tier would inspect
+  // an auth/subscription signal here (e.g. a header or KV lookup) and
+  // return "paid" so TIER_LIMITS["paid"] applies instead.
+  return "free";
+}
+
+function getClientIp(request) {
+  return request.headers.get("CF-Connecting-IP") || "unknown";
+}
+
+function getYearMonth(date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function getNextMonthFirstDay(date) {
+  const next = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+  return next.toISOString().slice(0, 10);
+}
+
+async function checkRateLimit(request, env) {
+  const tier = resolveTier(request, env);
+  const limit = TIER_LIMITS[tier] ?? TIER_LIMITS.free;
+  const now = new Date();
+  const key = `ip:${getClientIp(request)}:${getYearMonth(now)}`;
+  const resetDate = getNextMonthFirstDay(now);
+
+  const stored = await env.AVATAR_RATE_LIMIT.get(key);
+  const count = stored ? (parseInt(stored, 10) || 0) : 0;
+
+  return { key, limit, count, resetDate, exceeded: count >= limit };
+}
+
+function rateLimitHeaders(limit, remaining, resetDate) {
+  return {
+    "X-RateLimit-Limit": String(limit),
+    "X-RateLimit-Remaining": String(Math.max(0, remaining)),
+    "X-RateLimit-Reset": resetDate,
+  };
+}
+
+async function recordGeneration(env, key, currentCount) {
+  await env.AVATAR_RATE_LIMIT.put(key, String(currentCount + 1), {
+    expirationTtl: RATE_LIMIT_TTL_SECONDS,
+  });
 }
 
 export default {
@@ -46,6 +109,19 @@ export default {
     }
     if (request.method !== "POST") {
       return errorResponse("Method Not Allowed ｜ 許可されていないメソッドです", 405);
+    }
+
+    const rateLimit = await checkRateLimit(request, env);
+    if (rateLimit.exceeded) {
+      return jsonResponse(
+        {
+          error: "Monthly limit reached. / 今月の生成上限に達しました。",
+          limit: rateLimit.limit,
+          resetInfo: "Resets at the start of next month. / 来月初めにリセットされます。",
+        },
+        429,
+        rateLimitHeaders(rateLimit.limit, 0, rateLimit.resetDate)
+      );
     }
 
     let body;
@@ -136,6 +212,12 @@ Profile picture quality. Centered portrait.
       return errorResponse("Avatar generation failed ｜ アバターの生成に失敗しました", 502);
     }
 
-    return jsonResponse({ image: `data:image/png;base64,${b64}` });
+    await recordGeneration(env, rateLimit.key, rateLimit.count);
+
+    return jsonResponse(
+      { image: `data:image/png;base64,${b64}` },
+      200,
+      rateLimitHeaders(rateLimit.limit, rateLimit.limit - (rateLimit.count + 1), rateLimit.resetDate)
+    );
   },
 };
