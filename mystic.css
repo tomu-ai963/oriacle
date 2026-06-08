@@ -1,5 +1,5 @@
 /* ============================================
-   とむMYSTIC — 共通スタイルシート
+   Oriacle — Shared Stylesheet
    ============================================ */
 
 :root {
@@ -435,6 +435,7 @@ main {
   cursor: pointer; width: 100%;
   transition: opacity .2s; margin-bottom: .8rem;
 }
+a.mystic-modal-btn { display: block; text-align: center; text-decoration: none; box-sizing: border-box; }
 .mystic-modal-btn:hover { opacity: .85; }
 .mystic-modal-btn:disabled { opacity: .5; cursor: not-allowed; }
 .mystic-modal-error { color: var(--error); font-size: .82rem; min-height: 1.2em; margin-bottom: .5rem; }

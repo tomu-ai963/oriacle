@@ -22,8 +22,8 @@
   var header = document.createElement('div');
   header.id = 'mystic-back-header';
   var link = document.createElement('a');
-  link.href = 'https://tomu-ai963.github.io/mystic-system/';
-  link.textContent = '← とむMYSTIC';
+  link.href = '../app.html';
+  link.textContent = '← Oriacle';
   header.appendChild(link);
 
   document.addEventListener('DOMContentLoaded', function () {
