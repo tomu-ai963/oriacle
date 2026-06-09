@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="description" content="Oriacle Community — Share your readings with fellow seekers."/>
+  <title>Oriacle Community</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    /* ── Reset & Base ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    /* ── Design Tokens ────────────────────────────── */
+    :root {
+      --bg:        #060614;
+      --bg2:       #0c0c20;
+      --bg3:       #10102a;
+      --card:      rgba(255,255,255,0.035);
+      --card-h:    rgba(255,255,255,0.06);
+      --border:    rgba(255,255,255,0.08);
+      --border-g:  rgba(180,140,255,0.18);
+      --purple:    #7c52e8;
+      --purple-l:  #b399ff;
+      --purple-d:  #4a2fa0;
+      --gold:      #c9a227;
+      --gold-l:    #e8c84a;
+      --gold-d:    #8a6c10;
+      --text:      #e8e2f5;
+      --text-2:    #b0a8cc;
+      --muted:     #6e6690;
+      --ff-head:   'Cormorant Garamond', Georgia, serif;
+      --ff-body:   'Manrope', system-ui, sans-serif;
+      --ease:      cubic-bezier(0.22, 1, 0.36, 1);
+      --radius:    12px;
+      --max-w:     760px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ff-body);
+      font-weight: 400;
+      line-height: 1.7;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* ── Stars ────────────────────────────────────── */
+    #stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: #fff;
+      animation: twinkle linear infinite alternate;
+    }
+    @keyframes twinkle {
+      from { opacity: 0.05; }
+      to   { opacity: 0.75; }
+    }
+
+    /* ── Layout ───────────────────────────────────── */
+    .inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 0 1.25rem;
+    }
+    section, nav, main { position: relative; z-index: 1; }
+
+    /* ── Nav ──────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(6,6,20,0.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-family: var(--ff-head);
+      font-size: 1.35rem;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-back {
+      font-size: 0.82rem;
+      color: var(--text-2);
+      text-decoration: none;
+      transition: color 0.2s;
+      font-weight: 500;
+    }
+    .nav-back:hover { color: var(--purple-l); }
+
+    /* ── Page Header ──────────────────────────────── */
+    .page-header {
+      padding: 7rem 1.25rem 2.5rem;
+      text-align: center;
+    }
+    .page-title {
+      font-family: var(--ff-head);
+      font-size: clamp(2.2rem, 5vw, 3.5rem);
+      font-weight: 400;
+      color: var(--text);
+      letter-spacing: 0.02em;
+      margin-bottom: 0.5rem;
+    }
+    .page-subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    /* ── Buttons ──────────────────────────────────── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.75rem 1.75rem;
+      background: linear-gradient(135deg, var(--purple), var(--purple-d));
+      color: #fff;
+      font-family: var(--ff-body);
+      font-size: 0.88rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border: none;
+      border-radius: 40px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(124,82,232,0.35);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(124,82,232,0.5);
+    }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.7rem 1.5rem;
+      background: transparent;
+      color: var(--text-2);
+      font-family: var(--ff-body);
+      font-size: 0.85rem;
+      font-weight: 500;
+      border: 1px solid var(--border-g);
+      border-radius: 40px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .btn-ghost:hover {
+      color: var(--purple-l);
+      border-color: var(--purple-l);
+      background: rgba(124,82,232,0.08);
+    }
+    .btn-gold {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.75rem 1.75rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold-d));
+      color: #0c0c20;
+      font-family: var(--ff-body);
+      font-size: 0.9rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 40px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(201,162,39,0.35);
+    }
+    .btn-gold:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(201,162,39,0.5);
+    }
+
+    /* ── Auth Gate ────────────────────────────────── */
+    #auth-gate {
+      text-align: center;
+      padding: 4rem 1.5rem;
+    }
+    .gate-icon {
+      font-family: var(--ff-head);
+      font-size: 3rem;
+      color: var(--gold);
+      margin-bottom: 1.5rem;
+    }
+    .gate-title {
+      font-family: var(--ff-head);
+      font-size: 1.8rem;
+      font-weight: 400;
+      margin-bottom: 0.75rem;
+    }
+    .gate-text {
+      font-size: 0.92rem;
+      color: var(--text-2);
+      margin-bottom: 2rem;
+    }
+
+    /* ── Feed ─────────────────────────────────────── */
+    #feed-area {
+      padding: 0 0 6rem;
+    }
+
+    /* ── Spinner ──────────────────────────────────── */
+    .spinner-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 3rem 0;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Empty State ──────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1rem;
+    }
+    .empty-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+    .empty-text {
+      font-family: var(--ff-head);
+      font-size: 1.2rem;
+      color: var(--text-2);
+      font-style: italic;
+    }
+
+    /* ── Post Card ────────────────────────────────── */
+    .post-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+      margin-bottom: 1rem;
+      transition: border-color 0.25s;
+    }
+    .post-card:hover { border-color: var(--border-g); }
+
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.9rem;
+    }
+    .post-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      overflow: hidden;
+      background: linear-gradient(135deg, var(--purple-d), var(--bg3));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--purple-l);
+      text-transform: uppercase;
+    }
+    .post-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .post-meta { flex: 1; min-width: 0; }
+    .post-username {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .post-app {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-top: 0.1rem;
+    }
+    .post-date {
+      font-size: 0.75rem;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .post-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0.9rem 0;
+    }
+
+    .post-result {
+      font-size: 0.88rem;
+      color: var(--text-2);
+      line-height: 1.65;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 0.6rem;
+    }
+    .post-comment {
+      font-family: var(--ff-head);
+      font-style: italic;
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 0.9rem;
+    }
+    .post-footer {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .like-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.3rem 0.85rem;
+      cursor: pointer;
+      font-family: var(--ff-body);
+      font-size: 0.82rem;
+      color: var(--muted);
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .like-btn:hover {
+      color: #e75480;
+      border-color: rgba(231,84,128,0.3);
+      background: rgba(231,84,128,0.06);
+    }
+    .like-btn.liked {
+      color: #e75480;
+      border-color: rgba(231,84,128,0.35);
+      background: rgba(231,84,128,0.07);
+    }
+    .like-btn .like-icon { font-size: 0.95rem; }
+
+    /* ── FAB (Floating Action Button) ─────────────── */
+    #fab {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 50;
+      display: none;
+    }
+    #fab button {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.6rem;
+      background: linear-gradient(135deg, var(--purple), var(--purple-d));
+      color: #fff;
+      font-family: var(--ff-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 40px;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(124,82,232,0.45);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #fab button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(124,82,232,0.6);
+    }
+
+    /* ── Post Modal ───────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(6,6,20,0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-box {
+      background: var(--bg2);
+      border: 1px solid var(--border-g);
+      border-radius: var(--radius);
+      padding: 2rem;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: transform 0.25s var(--ease);
+    }
+    .modal-overlay.open .modal-box { transform: none; }
+
+    .modal-title {
+      font-family: var(--ff-head);
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 1.5rem;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.45rem;
+    }
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--ff-body);
+      font-size: 0.88rem;
+      padding: 0.65rem 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+      resize: vertical;
+    }
+    .form-select:focus,
+    .form-textarea:focus { border-color: var(--purple); }
+    .form-select option { background: var(--bg2); }
+    .form-textarea { min-height: 90px; }
+    .char-count {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: right;
+      margin-top: 0.3rem;
+    }
+    .form-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      margin-top: 1.5rem;
+    }
+    .modal-error {
+      font-size: 0.82rem;
+      color: #e75480;
+      margin-top: 0.75rem;
+      min-height: 1.2em;
+    }
+
+    /* ── Toast ────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg2);
+      color: var(--text);
+      padding: 0.7rem 1.4rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-g);
+      font-size: 0.85rem;
+      z-index: 300;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      animation: toast-in 0.3s var(--ease);
+    }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Stars -->
+<div id="stars" aria-hidden="true"></div>
+
+<!-- Nav -->
+<nav aria-label="Site navigation">
+  <a href="../" class="nav-logo">✦ Ori<span>acle</span></a>
+  <a href="../" class="nav-back">← Back to Oriacle</a>
+</nav>
+
+<!-- Page header -->
+<header class="page-header">
+  <h1 class="page-title">Community</h1>
+  <p class="page-subtitle">Share your readings with fellow seekers</p>
+</header>
+
+<main>
+  <div class="inner">
+
+    <!-- Auth gate (hidden when unlocked) -->
+    <div id="auth-gate" style="display:none;">
+      <div class="gate-icon">✦</div>
+      <h2 class="gate-title">Join the Community</h2>
+      <p class="gate-text">Subscribe to view readings from seekers around the world.</p>
+      <a href="../#pricing" class="btn-gold">See Plans →</a>
+    </div>
+
+    <!-- Feed area (hidden when locked) -->
+    <section id="feed-area" style="display:none;">
+      <div id="feed-loading" class="spinner-wrap">
+        <div class="spinner"></div>
+      </div>
+      <div id="feed-list" style="display:none;"></div>
+      <div id="feed-empty" class="empty-state" style="display:none;">
+        <div class="empty-icon">✨</div>
+        <p class="empty-text">Be the first to share your reading ✨</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- FAB: Share to Community (Pro only) -->
+<div id="fab">
+  <button id="fab-btn">✦ Share Reading</button>
+</div>
+
+<!-- Post Modal -->
+<div id="post-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-box">
+    <h2 class="modal-title" id="modal-title">Share to Community</h2>
+
+    <div class="form-group">
+      <label class="form-label" for="post-app">Divination App</label>
+      <select id="post-app" class="form-select">
+        <optgroup label="AI Creations">
+          <option>Spiritual Avatar Generator</option>
+        </optgroup>
+        <optgroup label="Zodiac &amp; Destiny">
+          <option>Star Reading</option>
+          <option>Numerology Reading</option>
+          <option>Guardian Star</option>
+          <option>Nine Star Ki</option>
+          <option>Maya Calendar</option>
+          <option>Animal Fortune</option>
+          <option>Name Fortune</option>
+          <option>Biorhythm</option>
+          <option>Moon Sign</option>
+          <option>Eastern Zodiac × Eto</option>
+          <option>Detailed Horoscope</option>
+        </optgroup>
+        <optgroup label="Cards &amp; Symbols">
+          <option>Single Tarot Draw</option>
+          <option>Rune Reading</option>
+          <option>Oracle Cards</option>
+          <option>Nine Palace Reading</option>
+        </optgroup>
+        <optgroup label="Soul, Past Life &amp; Mission">
+          <option>Past Life Reading</option>
+          <option>Past Life Profession</option>
+          <option>Soul Mission Reading</option>
+          <option>Spirit Animal Reading</option>
+          <option>Aura Color Reading</option>
+          <option>Chakra Reading</option>
+        </optgroup>
+        <optgroup label="Messages &amp; Readings">
+          <option>Oracle Message</option>
+          <option>Dream Decoder AI</option>
+          <option>Soul Compatibility</option>
+          <option>Dream Colors Reading</option>
+          <option>Moon Phase Journal</option>
+          <option>Cosmic Message</option>
+        </optgroup>
+        <optgroup label="Fortune &amp; Healing">
+          <option>Today's Lucky Color</option>
+          <option>Power Stone</option>
+          <option>Palm Reading</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="post-result">Reading Result <span style="color:var(--muted)">(required)</span></label>
+      <textarea id="post-result" class="form-textarea" maxlength="1000" placeholder="Paste or type the reading result here…" rows="5"></textarea>
+      <p class="char-count"><span id="result-count">0</span> / 1000</p>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="post-comment">Your Comment <span style="color:var(--muted)">(optional)</span></label>
+      <textarea id="post-comment" class="form-textarea" maxlength="200" placeholder="Add a personal note…" rows="3"></textarea>
+      <p class="char-count"><span id="comment-count">0</span> / 200</p>
+    </div>
+
+    <p id="modal-error" class="modal-error"></p>
+
+    <div class="form-actions">
+      <button id="modal-cancel" class="btn-ghost">Cancel</button>
+      <button id="modal-post" class="btn-primary">Post ✦</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const WORKER = 'https://community-worker.inverted-triangle-leef.workers.dev';
+
+  /* ── Stars ─────────────────────────────────────── */
+  (function () {
+    const container = document.getElementById('stars');
+    const count = window.innerWidth < 600 ? 70 : 110;
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < count; i++) {
+      const s = document.createElement('div');
+      s.className = 'star';
+      const size = Math.random() < 0.25 ? 2 : 1;
+      s.style.cssText =
+        'left:'   + (Math.random() * 100) + '%;' +
+        'top:'    + (Math.random() * 100) + '%;' +
+        'width:'  + size + 'px;' +
+        'height:' + size + 'px;' +
+        'animation-delay:'    + (Math.random() * 4) + 's;' +
+        'animation-duration:' + (2.5 + Math.random() * 3.5) + 's;' +
+        'opacity:' + (0.05 + Math.random() * 0.25) + ';';
+      frag.appendChild(s);
+    }
+    container.appendChild(frag);
+  })();
+
+  /* ── Auth ──────────────────────────────────────── */
+  function getUserId() {
+    return localStorage.getItem('mystic_user_id') || null;
+  }
+
+  function getPlanRank() {
+    const userId = getUserId();
+    if (!userId) return 0;
+    if (localStorage.getItem('mystic_subscription') !== 'active') return 0;
+    const rank = parseInt(localStorage.getItem('mystic_plan_rank') || '1', 10);
+    return isNaN(rank) ? 1 : rank;
+  }
+
+  /* ── Liked posts (persisted in localStorage) ───── */
+  const likedPosts = new Set(
+    JSON.parse(localStorage.getItem('community_liked') || '[]')
+  );
+  function saveLiked() {
+    localStorage.setItem('community_liked', JSON.stringify([...likedPosts]));
+  }
+
+  /* ── Utilities ─────────────────────────────────── */
+  function formatDate(iso) {
+    const d = new Date(iso);
+    const diffMs = Date.now() - d;
+    const diffH = diffMs / 3600000;
+    if (diffH < 1) {
+      const m = Math.floor(diffMs / 60000);
+      return m < 1 ? 'just now' : m + 'm ago';
+    }
+    if (diffH < 24) return Math.floor(diffH) + 'h ago';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  function showToast(msg, duration) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), duration || 3500);
+  }
+
+  function authHeaders() {
+    return { 'Content-Type': 'application/json', 'X-User-Id': getUserId() };
+  }
+
+  /* ── Render a single card ──────────────────────── */
+  function renderCard(post) {
+    const liked = likedPosts.has(post.id);
+    const initial = (post.username || '?')[0].toUpperCase();
+    const avatarHtml = post.avatarUrl
+      ? '<img src="' + post.avatarUrl + '" alt="" loading="lazy"/>'
+      : initial;
+
+    const commentHtml = post.userComment
+      ? '<p class="post-comment">&ldquo;' + escHtml(post.userComment) + '&rdquo;</p>'
+      : '';
+
+    const card = document.createElement('article');
+    card.className = 'post-card';
+    card.dataset.id = post.id;
+    card.innerHTML =
+      '<div class="post-header">' +
+        '<div class="post-avatar">' + avatarHtml + '</div>' +
+        '<div class="post-meta">' +
+          '<span class="post-username">' + escHtml(post.username) + '</span>' +
+          '<span class="post-app">' + escHtml(post.appName) + '</span>' +
+        '</div>' +
+        '<span class="post-date">' + formatDate(post.createdAt) + '</span>' +
+      '</div>' +
+      '<div class="post-divider"></div>' +
+      '<p class="post-result">' + escHtml(post.resultText) + '</p>' +
+      commentHtml +
+      '<div class="post-footer">' +
+        '<button class="like-btn' + (liked ? ' liked' : '') + '" data-id="' + post.id + '">' +
+          '<span class="like-icon">' + (liked ? '♥' : '♡') + '</span>' +
+          '<span class="like-count">' + (post.likes || 0) + '</span>' +
+        '</button>' +
+      '</div>';
+
+    card.querySelector('.like-btn').addEventListener('click', handleLike);
+    return card;
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* ── Like ──────────────────────────────────────── */
+  async function handleLike(e) {
+    const btn = e.currentTarget;
+    const postId = btn.dataset.id;
+    if (likedPosts.has(postId)) return;
+
+    btn.disabled = true;
+    try {
+      const res = await fetch(WORKER + '/like', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ postId }),
+      });
+      if (res.status === 409) {
+        likedPosts.add(postId);
+        saveLiked();
+        btn.classList.add('liked');
+        btn.querySelector('.like-icon').textContent = '♥';
+        return;
+      }
+      if (!res.ok) { showToast('Could not like this post.'); return; }
+      const data = await res.json();
+      likedPosts.add(postId);
+      saveLiked();
+      btn.classList.add('liked');
+      btn.querySelector('.like-icon').textContent = '♥';
+      btn.querySelector('.like-count').textContent = data.likes;
+    } catch {
+      showToast('Network error. Please try again.');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* ── Load feed ─────────────────────────────────── */
+  async function loadFeed() {
+    const loading = document.getElementById('feed-loading');
+    const list    = document.getElementById('feed-list');
+    const empty   = document.getElementById('feed-empty');
+
+    loading.style.display = 'flex';
+    list.style.display = 'none';
+    empty.style.display = 'none';
+
+    try {
+      const res = await fetch(WORKER + '/feed', {
+        headers: { 'X-User-Id': getUserId() },
+      });
+
+      if (res.status === 403) {
+        // Edge case: localStorage says active but backend disagrees
+        showGate();
+        return;
+      }
+      if (!res.ok) throw new Error('fetch failed');
+
+      const posts = await res.json();
+      loading.style.display = 'none';
+
+      if (!posts.length) {
+        empty.style.display = 'block';
+        return;
+      }
+
+      list.innerHTML = '';
+      posts.forEach(p => list.appendChild(renderCard(p)));
+      list.style.display = 'block';
+    } catch {
+      loading.style.display = 'none';
+      empty.style.display = 'block';
+      empty.querySelector('.empty-text').textContent = 'Could not load feed. Please try again.';
+    }
+  }
+
+  /* ── Gate / unlock ─────────────────────────────── */
+  function showGate() {
+    document.getElementById('auth-gate').style.display = 'block';
+    document.getElementById('feed-area').style.display = 'none';
+  }
+
+  function showFeed(planRank) {
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('feed-area').style.display = 'block';
+    if (planRank >= 2) {
+      document.getElementById('fab').style.display = 'block';
+    }
+    loadFeed();
+  }
+
+  /* ── Post modal ────────────────────────────────── */
+  const modal        = document.getElementById('post-modal');
+  const modalError   = document.getElementById('modal-error');
+  const resultTa     = document.getElementById('post-result');
+  const commentTa    = document.getElementById('post-comment');
+  const resultCount  = document.getElementById('result-count');
+  const commentCount = document.getElementById('comment-count');
+
+  function openModal() {
+    modal.classList.add('open');
+    resultTa.focus();
+  }
+
+  function closeModal() {
+    modal.classList.remove('open');
+    modalError.textContent = '';
+  }
+
+  document.getElementById('fab-btn').addEventListener('click', openModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) closeModal();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
+  });
+
+  resultTa.addEventListener('input', function () {
+    resultCount.textContent = this.value.length;
+  });
+  commentTa.addEventListener('input', function () {
+    commentCount.textContent = this.value.length;
+  });
+
+  document.getElementById('modal-post').addEventListener('click', async function () {
+    const btn = this;
+    const appName     = document.getElementById('post-app').value;
+    const resultText  = resultTa.value.trim();
+    const userComment = commentTa.value.trim();
+
+    modalError.textContent = '';
+
+    if (!resultText) {
+      modalError.textContent = 'Reading Result is required.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Posting…';
+
+    try {
+      const res = await fetch(WORKER + '/post', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ appName, resultText, userComment }),
+      });
+
+      const data = await res.json();
+
+      if (res.status === 403) {
+        modalError.textContent = 'Pro plan required to post.';
+        return;
+      }
+      if (!res.ok) {
+        modalError.textContent = data.error || 'Failed to post. Please try again.';
+        return;
+      }
+
+      closeModal();
+      resultTa.value = '';
+      commentTa.value = '';
+      resultCount.textContent = '0';
+      commentCount.textContent = '0';
+      showToast('Posted! ✦');
+
+      // Prepend new post to feed
+      const list = document.getElementById('feed-list');
+      const empty = document.getElementById('feed-empty');
+      const card = renderCard(data);
+      list.insertBefore(card, list.firstChild);
+      list.style.display = 'block';
+      empty.style.display = 'none';
+    } catch {
+      modalError.textContent = 'Network error. Please try again.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Post ✦';
+    }
+  });
+
+  /* ── Init ──────────────────────────────────────── */
+  (function init() {
+    const rank = getPlanRank();
+    if (rank < 1) {
+      showGate();
+    } else {
+      showFeed(rank);
+    }
+  })();
+</script>
+</body>
+</html>

@@ -819,6 +819,38 @@
       font-size: 0.78rem;
       color: var(--muted);
     }
+
+    /* ═══════════════════════════════════════════════
+       COMMUNITY CTA
+    ═══════════════════════════════════════════════ */
+    #community {
+      padding: 6rem 1.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .community-orb {
+      position: absolute;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,162,39,0.07) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    #community > * { position: relative; z-index: 1; }
+    .plan-note {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 1.2rem;
+    }
+    .plan-note a {
+      color: var(--purple-l);
+      text-decoration: none;
+    }
+    .plan-note a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -1161,6 +1193,20 @@
       </div>
     </div>
   </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════════
+     COMMUNITY
+═══════════════════════════════════════════════ -->
+<section id="community">
+  <div class="community-orb" aria-hidden="true"></div>
+  <div class="eyebrow fade-up">New</div>
+  <h2 class="section-title fade-up">Join the Community</h2>
+  <p class="section-lead fade-up" style="margin:0 auto 2rem;">Share your readings. Connect with seekers worldwide.</p>
+  <a href="/oriacle/community/" class="btn-gold fade-up">Enter the Community →</a>
+  <p class="plan-note fade-up">Available for Pro members &nbsp;·&nbsp; <a href="#pricing">Upgrade</a></p>
 </section>
 
 <div class="divider"></div>
