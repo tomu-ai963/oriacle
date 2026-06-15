@@ -658,12 +658,12 @@
   })();
 
   /* ── Auth ──────────────────────────────────────── */
-  function getUserId() {
-    return localStorage.getItem('mystic_user_id') || null;
+  function getSession() {
+    return localStorage.getItem('mystic_session') || null;
   }
 
   function getPlanRank() {
-    const userId = getUserId();
+    const userId = getSession();
     if (!userId) return 0;
     if (localStorage.getItem('mystic_subscription') !== 'active') return 0;
     const rank = parseInt(localStorage.getItem('mystic_plan_rank') || '1', 10);
@@ -700,7 +700,7 @@
   }
 
   function authHeaders() {
-    return { 'Content-Type': 'application/json', 'X-User-Id': getUserId() };
+    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getSession() };
   }
 
   /* ── Render a single card ──────────────────────── */
@@ -795,7 +795,7 @@
 
     try {
       const res = await fetch(WORKER + '/feed', {
-        headers: { 'X-User-Id': getUserId() },
+        headers: { 'Authorization': 'Bearer ' + getSession() },
       });
 
       if (res.status === 403) {

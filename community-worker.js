@@ -8,8 +8,36 @@ const CORS_ORIGIN = "https://tomu-ai963.github.io";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": CORS_ORIGIN,
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-User-Id",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
+
+// Bearer session auth (shared with the main worker).
+// Sessions live in MYSTIC_SUBSCRIPTIONS KV under session:<sessionId> → { userId, expiry }.
+const SESSION_PREFIX = "session:";
+
+function getBearer(request) {
+  const auth = request.headers.get("Authorization") || "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : null;
+}
+
+// Verify the Bearer session and return the userId (btoa(email)), or null.
+async function authenticate(request, env) {
+  const sessionId = getBearer(request);
+  if (!sessionId) return null;
+  try {
+    const data = await env.MYSTIC_SUBSCRIPTIONS.get(SESSION_PREFIX + sessionId);
+    if (!data) return null;
+    const session = JSON.parse(data);
+    if (session.expiry && session.expiry < Date.now()) {
+      await env.MYSTIC_SUBSCRIPTIONS.delete(SESSION_PREFIX + sessionId);
+      return null;
+    }
+    return session.userId || null;
+  } catch {
+    return null;
+  }
+}
 
 const FEED_MAX = 100;
 const POST_TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days
@@ -49,9 +77,6 @@ function jsonResponse(data, status = 200) {
 // Subscription schema: { active, plan, planRank?, expires, username?, avatarUrl? }
 // planRank 0 = free, 1 = Plus, 2 = Pro
 async function getPlanRank(userId, env) {
-  // TODO: REMOVE BEFORE PRODUCTION
-  if (userId === "test_user") return 2;
-
   try {
     const raw = await env.MYSTIC_SUBSCRIPTIONS.get(userId);
     if (!raw) return 0;
@@ -86,7 +111,7 @@ export default {
     const path = url.pathname;
     const method = request.method;
 
-    const userId = request.headers.get("X-User-Id");
+    const userId = await authenticate(request, env);
     if (!userId) return jsonResponse({ error: "Unauthorized" }, 401);
 
     const planRank = await getPlanRank(userId, env);

@@ -6,13 +6,150 @@
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-User-Id, X-MCP-Token, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-MCP-Token, X-Admin-Token",
 };
+
+// ============================================
+// 入力バリデーション
+// 失敗時は 400 { error: "Invalid input" } を返し、詳細理由は開示しない。
+// ============================================
+
+// /api/mystic で受理する action（appId）の許可リスト
+const ALLOWED_ACTIONS = new Set([
+  "star-reading", "numerology", "guardian-star", "nine-star-ki", "maya-calendar",
+  "animal-fortune", "name-fortune", "biorhythm", "moon-sign", "eastern-stars",
+  "horoscope-deep", "tarot", "rune-reading", "oracle-cards", "nine-palace",
+  "past-life", "past-profession", "soul-mission", "spirit-animal", "aura-reading",
+  "chakra-check", "oracle-message", "dream-decoder", "soul-compatibility", "dream-colors",
+  "moon-journal", "cosmic-message", "lucky-color", "crystal-guide", "palm-reading",
+]);
+
+// action ごとの「必須かつ空文字NGのテキスト項目」
+const REQUIRED_TEXT_FIELDS = {
+  "animal-fortune": ["animal"],
+  "name-fortune": ["fullName"],
+  "tarot": ["card"],
+  "rune-reading": ["rune"],
+  "oracle-cards": ["theme", "card"],
+  "oracle-message": ["feeling"],
+  "dream-decoder": ["dream"],
+  "crystal-guide": ["currentState"],
+};
+
+const MAX_TEXT_LEN = 1000;
+
+// 共通バリデーション関数。type に応じて値の妥当性を真偽で返す。
+function validateInput(type, value) {
+  switch (type) {
+    case "birthdate": {
+      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const [y, m, d] = value.split("-").map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      // 実在日チェック（例: 2021-02-31 を弾く）
+      if (dt.getUTCFullYear() !== y || dt.getUTCMonth() + 1 !== m || dt.getUTCDate() !== d) return false;
+      const t = dt.getTime();
+      const min = Date.UTC(1900, 0, 1);
+      // 未来日付はNG（今日以前のみ許可）
+      return t >= min && t <= Date.now();
+    }
+    case "email":
+      return typeof value === "string"
+        && value.length > 0
+        && value.length <= 254
+        && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    case "text":
+      return typeof value === "string" && value.trim().length > 0 && value.length <= MAX_TEXT_LEN;
+    default:
+      return false;
+  }
+}
+
+// 占いリクエスト（/api/mystic・/mystic/*）のボディ検証
+function validateMysticBody(action, body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return false;
+
+  // すべての文字列フィールドは MAX_TEXT_LEN 以内（手相の画像データ imageBase64 は除外）
+  for (const [key, v] of Object.entries(body)) {
+    if (key === "imageBase64") continue;
+    if (typeof v === "string" && v.length > MAX_TEXT_LEN) return false;
+    if (Array.isArray(v)) {
+      for (const item of v) {
+        if (typeof item === "string" && item.length > MAX_TEXT_LEN) return false;
+      }
+    }
+  }
+
+  // 生年月日（存在する場合のみ・未来日／不正形式NG）
+  for (const key of ["birthdate", "birthdate1", "birthdate2"]) {
+    if (body[key] !== undefined && !validateInput("birthdate", body[key])) return false;
+  }
+
+  // 必須テキスト（空文字NG・1000文字以上NG）
+  const requiredText = REQUIRED_TEXT_FIELDS[action];
+  if (requiredText) {
+    for (const field of requiredText) {
+      if (!validateInput("text", body[field])) return false;
+    }
+  }
+
+  // 夢の色彩：colors は非空の文字列配列
+  if (action === "dream-colors") {
+    if (!Array.isArray(body.colors) || body.colors.length === 0) return false;
+    if (!body.colors.every(c => validateInput("text", c))) return false;
+  }
+
+  // 手相：画像データ必須
+  if (action === "palm-reading") {
+    if (typeof body.imageBase64 !== "string" || body.imageBase64.length === 0) return false;
+  }
+
+  return true;
+}
+
+// ============================================
+// レートリミット（KVベース）
+// キー: rate:{type}:{identifier}:{YYYY-MM-DD-HH}（UTC時）、expirationTtl=3600で自動失効。
+// 超過時は false を返す。KVアクセス失敗時は true（可用性優先で通過）。
+// MYSTIC_SUBSCRIPTIONS KV を流用。
+// ============================================
+
+const RATE_LIMITS = {
+  magic: 5,   // /auth/request-magic-link : メアドあたり 5回/時
+  ai: 20,     // /api/mystic・/mystic/*    : ユーザーあたり 20回/時
+};
+
+function rateBucket(date = new Date()) {
+  // "2026-06-15T07:23:45.000Z" → "2026-06-15-07"
+  return date.toISOString().slice(0, 13).replace("T", "-");
+}
+
+async function checkRateLimit(env, type, identifier) {
+  const limit = RATE_LIMITS[type];
+  if (!limit || !identifier) return true; // 未定義タイプ/識別子なしは制限しない
+  const key = `rate:${type}:${identifier}:${rateBucket()}`;
+  try {
+    const current = parseInt(await env.MYSTIC_SUBSCRIPTIONS.get(key), 10) || 0;
+    if (current >= limit) return false;
+    await env.MYSTIC_SUBSCRIPTIONS.put(key, String(current + 1), { expirationTtl: 3600 });
+    return true;
+  } catch {
+    return true; // KV障害時は通過（可用性優先）
+  }
+}
 
 export default {
   async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: CORS_HEADERS });
+      // プリフライト: クライアントが要求したヘッダーをそのまま許可（移行期の旧ヘッダーにも耐性）
+      const reqHeaders = request.headers.get("Access-Control-Request-Headers");
+      return new Response(null, {
+        status: 204,
+        headers: {
+          ...CORS_HEADERS,
+          ...(reqHeaders ? { "Access-Control-Allow-Headers": reqHeaders } : {}),
+          "Access-Control-Max-Age": "86400",
+        },
+      });
     }
 
     const url = new URL(request.url);
@@ -23,58 +160,38 @@ export default {
     }
 
     try {
+      // ── 認証（マジックリンク + Bearerセッション）
+      if (path === "/auth/request-magic-link") return await handleRequestMagicLink(request, env);
+      if (path === "/auth/verify")             return await handleVerify(request, env);
+      if (path === "/auth/logout")             return await handleLogout(request, env);
+      if (path === "/auth/me")                 return await handleMe(request, env);
+
       if (path.startsWith("/mystic/")) {
-        const userId = request.headers.get("X-User-Id");
+        const userId = await authenticate(request, env);
         if (!userId) return jsonResponse({ error: "認証が必要です" }, 401);
 
         const isSubscribed = await checkSubscription(userId, env);
         if (!isSubscribed) return jsonResponse({ error: "サブスクリプションが必要です" }, 403);
 
-        // ① 〜 ③
-        if (path === "/mystic/star-reading")      return handleStarReading(request, env);
-        if (path === "/mystic/numerology")         return handleNumerology(request, env);
-        if (path === "/mystic/guardian-star")      return handleGuardianStar(request, env);
+        // 入力バリデーション（ハンドラ本体はオリジナルのbodyを再読込するためcloneで検証）
+        const mysticAction = path.slice("/mystic/".length);
+        if (!ALLOWED_ACTIONS.has(mysticAction)) return jsonResponse({ error: "Not Found" }, 404);
+        let mysticBody;
+        try { mysticBody = await request.clone().json(); } catch { mysticBody = {}; }
+        if (!validateMysticBody(mysticAction, mysticBody)) {
+          return jsonResponse({ error: "Invalid input" }, 400);
+        }
 
-        // ④ 〜 ⑪
-        if (path === "/mystic/nine-star-ki")       return handleNineStarKi(request, env);
-        if (path === "/mystic/maya-calendar")      return handleMayaCalendar(request, env);
-        if (path === "/mystic/animal-fortune")     return handleAnimalFortune(request, env);
-        if (path === "/mystic/name-fortune")       return handleNameFortune(request, env);
-        if (path === "/mystic/biorhythm")          return handleBiorhythm(request, env);
-        if (path === "/mystic/moon-sign")          return handleMoonSign(request, env);
-        if (path === "/mystic/eastern-stars")      return handleEasternStars(request, env);
-        if (path === "/mystic/horoscope-deep")     return handleHoroscopeDeep(request, env);
+        // レートリミット（AI呼び出し: ユーザーあたり 20回/時）
+        if (!await checkRateLimit(env, "ai", userId)) {
+          return jsonResponse({ error: "Too many requests" }, 429);
+        }
 
-        // ⑫ 〜 ⑮
-        if (path === "/mystic/tarot")              return handleTarot(request, env);
-        if (path === "/mystic/rune-reading")       return handleRuneReading(request, env);
-        if (path === "/mystic/oracle-cards")       return handleOracleCards(request, env);
-        if (path === "/mystic/nine-palace")        return handleNinePalace(request, env);
-
-        // ⑯ 〜 ㉑
-        if (path === "/mystic/past-life")          return handlePastLife(request, env);
-        if (path === "/mystic/past-profession")    return handlePastProfession(request, env);
-        if (path === "/mystic/soul-mission")       return handleSoulMission(request, env);
-        if (path === "/mystic/spirit-animal")      return handleSpiritAnimal(request, env);
-        if (path === "/mystic/aura-reading")       return handleAuraReading(request, env);
-        if (path === "/mystic/chakra-check")       return handleChakraCheck(request, env);
-
-        // ㉒ 〜 ㉚
-        if (path === "/mystic/oracle-message")     return handleOracleMessage(request, env);
-        if (path === "/mystic/dream-decoder")      return handleDreamDecoder(request, env);
-        if (path === "/mystic/soul-compatibility") return handleSoulCompatibility(request, env);
-        if (path === "/mystic/dream-colors")       return handleDreamColors(request, env);
-        if (path === "/mystic/moon-journal")       return handleMoonJournal(request, env);
-        if (path === "/mystic/cosmic-message")     return handleCosmicMessage(request, env);
-        if (path === "/mystic/lucky-color")        return handleLuckyColor(request, env);
-        if (path === "/mystic/crystal-guide")      return handleCrystalGuide(request, env);
-        if (path === "/mystic/palm-reading")       return handlePalmReading(request, env);
-
-        return jsonResponse({ error: "Not Found" }, 404);
+        return await handleMysticRequest(mysticAction, mysticBody, env);
       }
 
       if (path === "/api/mystic") {
-        const userId = request.headers.get("X-User-Id");
+        const userId = await authenticate(request, env);
         if (!userId) return jsonResponse({ error: "認証が必要です" }, 401);
 
         const isSubscribed = await checkSubscription(userId, env);
@@ -82,58 +199,29 @@ export default {
 
         const body = await request.json();
         const { action, ...rest } = body;
-        const makeReq = () => new Request(request.url, {
-          method: "POST",
-          headers: request.headers,
-          body: JSON.stringify(rest),
-        });
-
-        switch (action) {
-          case "star-reading":      return handleStarReading(makeReq(), env);
-          case "numerology":        return handleNumerology(makeReq(), env);
-          case "guardian-star":     return handleGuardianStar(makeReq(), env);
-          case "nine-star-ki":      return handleNineStarKi(makeReq(), env);
-          case "maya-calendar":     return handleMayaCalendar(makeReq(), env);
-          case "animal-fortune":    return handleAnimalFortune(makeReq(), env);
-          case "name-fortune":      return handleNameFortune(makeReq(), env);
-          case "biorhythm":         return handleBiorhythm(makeReq(), env);
-          case "moon-sign":         return handleMoonSign(makeReq(), env);
-          case "eastern-stars":     return handleEasternStars(makeReq(), env);
-          case "horoscope-deep":    return handleHoroscopeDeep(makeReq(), env);
-          case "tarot":             return handleTarot(makeReq(), env);
-          case "rune-reading":      return handleRuneReading(makeReq(), env);
-          case "oracle-cards":      return handleOracleCards(makeReq(), env);
-          case "nine-palace":       return handleNinePalace(makeReq(), env);
-          case "past-life":         return handlePastLife(makeReq(), env);
-          case "past-profession":   return handlePastProfession(makeReq(), env);
-          case "soul-mission":      return handleSoulMission(makeReq(), env);
-          case "spirit-animal":     return handleSpiritAnimal(makeReq(), env);
-          case "aura-reading":      return handleAuraReading(makeReq(), env);
-          case "chakra-check":      return handleChakraCheck(makeReq(), env);
-          case "oracle-message":    return handleOracleMessage(makeReq(), env);
-          case "dream-decoder":     return handleDreamDecoder(makeReq(), env);
-          case "soul-compatibility":return handleSoulCompatibility(makeReq(), env);
-          case "dream-colors":      return handleDreamColors(makeReq(), env);
-          case "moon-journal":      return handleMoonJournal(makeReq(), env);
-          case "cosmic-message":    return handleCosmicMessage(makeReq(), env);
-          case "lucky-color":       return handleLuckyColor(makeReq(), env);
-          case "crystal-guide":     return handleCrystalGuide(makeReq(), env);
-          case "palm-reading":      return handlePalmReading(makeReq(), env);
-          default:                  return jsonResponse({ error: "Unknown action" }, 404);
-        }
+        if (!ALLOWED_ACTIONS.has(action)) return jsonResponse({ error: "Invalid input" }, 400);
+        if (!validateMysticBody(action, rest)) return jsonResponse({ error: "Invalid input" }, 400);
+        if (!await checkRateLimit(env, "ai", userId)) return jsonResponse({ error: "Too many requests" }, 429);
+        return await handleMysticRequest(action, rest, env);
       }
 
-      if (path === "/subscription/check")    return handleSubscriptionCheck(request, env);
-      if (path === "/subscription/register") return handleSubscriptionRegister(request, env);
-      if (path === "/stripe/checkout")       return handleStripeCheckout(request, env);
-      if (path === "/webhook")               return handleStripeWebhook(request, env);
+      if (path === "/subscription/check")    return await handleSubscriptionCheck(request, env);
+      if (path === "/subscription/register") {
+        if (request.headers.get("X-Admin-Token") !== env.ADMIN_TOKEN) {
+          return jsonResponse({ error: "Forbidden" }, 403);
+        }
+        return await handleSubscriptionRegister(request, env);
+      }
+      if (path === "/stripe/checkout")       return await handleStripeCheckout(request, env);
+      if (path === "/webhook")               return await handleStripeWebhook(request, env);
 
-      if (path === "/mcp")                   return handleMcp(request, env);
+      if (path === "/mcp")                   return await handleMcp(request, env);
 
       return jsonResponse({ error: "Not Found" }, 404);
 
     } catch (err) {
-      return jsonResponse({ error: "サーバーエラー: " + err.message }, 500);
+      console.error("Unhandled error:", err && (err.stack || err.message));
+      return jsonResponse({ error: "Something went wrong. Please try again in a moment." }, 500);
     }
   },
 };
@@ -172,12 +260,259 @@ async function handleSubscriptionRegister(request, env) {
 }
 
 // ============================================
+// 認証 — マジックリンク + Bearerセッション
+// KVキー: session:<sessionId> → { userId, expiry }
+// userId は既存と互換の btoa(email)。サブスクのKVキーと一致させる。
+// クロスサイト構成（フロント=github.io / API=workers.dev）のため Cookie ではなく
+// Authorization: Bearer <sessionId> でセッションを伝送する。
+// ============================================
+
+const SESSION_PREFIX = "session:";
+const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;   // 7日
+const MAGIC_TOKEN_TTL_SECONDS = 15 * 60;        // 15分
+const ALLOWED_REDIRECT_ORIGINS = ["https://tomu-ai963.github.io"];
+const DEFAULT_REDIRECT_URL = "https://tomu-ai963.github.io/oriacle/";
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function b64urlEncode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function b64urlDecode(s) {
+  const pad = s.length % 4 ? "=".repeat(4 - (s.length % 4)) : "";
+  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+async function hmacHex(secret, message) {
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function timingSafeEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+// リダイレクト先を許可originに限定（オープンリダイレクト＋セッション漏洩の防止）
+function sanitizeRedirect(raw) {
+  try {
+    if (!raw) return DEFAULT_REDIRECT_URL;
+    const u = new URL(raw);
+    if (ALLOWED_REDIRECT_ORIGINS.includes(u.origin)) return u.origin + u.pathname;
+  } catch { /* ignore */ }
+  return DEFAULT_REDIRECT_URL;
+}
+
+// HMAC署名付きマジックトークン（ステートレス、15分有効）
+async function createMagicToken(env, email, redirect) {
+  const payload = b64urlEncode(JSON.stringify({
+    email,
+    redirect,
+    exp: Math.floor(Date.now() / 1000) + MAGIC_TOKEN_TTL_SECONDS,
+  }));
+  const sig = await hmacHex(env.AUTH_SECRET, payload);
+  return `${payload}.${sig}`;
+}
+
+async function verifyMagicToken(env, token) {
+  if (!token || typeof token !== "string") return null;
+  const [payload, sig] = token.split(".");
+  if (!payload || !sig) return null;
+  const expected = await hmacHex(env.AUTH_SECRET, payload);
+  if (!timingSafeEqual(sig, expected)) return null;
+  let obj;
+  try { obj = JSON.parse(b64urlDecode(payload)); } catch { return null; }
+  if (!obj || typeof obj.email !== "string" || !obj.email.includes("@")) return null;
+  if (!obj.exp || obj.exp < Math.floor(Date.now() / 1000)) return null;
+  return obj;
+}
+
+async function createSession(env, userId) {
+  const sessionId = crypto.randomUUID();
+  const expiry = Date.now() + SESSION_TTL_SECONDS * 1000;
+  await env.MYSTIC_SUBSCRIPTIONS.put(
+    SESSION_PREFIX + sessionId,
+    JSON.stringify({ userId, expiry }),
+    { expirationTtl: SESSION_TTL_SECONDS }
+  );
+  return sessionId;
+}
+
+function getBearer(request) {
+  const auth = request.headers.get("Authorization") || "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : null;
+}
+
+// 全保護ルート共通の認証。成功時は userId（btoa(email)）を返す。
+async function authenticate(request, env) {
+  const sessionId = getBearer(request);
+  if (!sessionId) return null;
+  try {
+    const data = await env.MYSTIC_SUBSCRIPTIONS.get(SESSION_PREFIX + sessionId);
+    if (!data) return null;
+    const session = JSON.parse(data);
+    if (session.expiry && session.expiry < Date.now()) {
+      await env.MYSTIC_SUBSCRIPTIONS.delete(SESSION_PREFIX + sessionId);
+      return null;
+    }
+    return session.userId || null;
+  } catch {
+    return null;
+  }
+}
+
+// POST /auth/request-magic-link { email, redirect }
+async function handleRequestMagicLink(request, env) {
+  if (request.method !== "POST") return jsonResponse({ error: "Method Not Allowed" }, 405);
+  if (!env.AUTH_SECRET) {
+    console.error("AUTH_SECRET is not set; cannot run authentication");
+    return jsonResponse({ error: "Authentication is not configured" }, 500);
+  }
+  const body = await request.json().catch(() => ({}));
+  const email = typeof body.email === "string" ? body.email.toLowerCase().trim() : "";
+  if (!validateInput("email", email)) {
+    return jsonResponse({ error: "Invalid input" }, 400);
+  }
+  // レートリミット（メアドあたり 5回/時）— メール送信前に確認
+  if (!await checkRateLimit(env, "magic", email)) {
+    return jsonResponse({ error: "Too many requests" }, 429);
+  }
+  const redirect = sanitizeRedirect(body.redirect);
+  const token = await createMagicToken(env, email, redirect);
+  const link = `${new URL(request.url).origin}/auth/verify?token=${encodeURIComponent(token)}`;
+  await sendMagicLinkEmail(env, email, link);
+  return jsonResponse({ success: true });
+}
+
+// GET /auth/verify?token=xxx → セッション発行 & フロントへリダイレクト
+async function handleVerify(request, env) {
+  if (!env.AUTH_SECRET) {
+    console.error("AUTH_SECRET is not set; cannot run authentication");
+    return htmlResponse(authResultPage("Authentication is not configured correctly.", false));
+  }
+  const token = new URL(request.url).searchParams.get("token");
+  const obj = await verifyMagicToken(env, token);
+  if (!obj) {
+    return htmlResponse(authResultPage("This link is invalid or has expired. Please sign in again.", false));
+  }
+  const userId = btoa(obj.email);            // 既存 identity と互換（KVキー一致）
+  const sessionId = await createSession(env, userId);
+  const redirect = sanitizeRedirect(obj.redirect);
+  const dest = `${redirect}#mystic_sid=${encodeURIComponent(sessionId)}`;
+  return new Response(null, { status: 302, headers: { Location: dest, ...CORS_HEADERS } });
+}
+
+// POST /auth/logout（Bearer）→ KVからセッション削除
+async function handleLogout(request, env) {
+  const sessionId = getBearer(request);
+  if (sessionId) {
+    try { await env.MYSTIC_SUBSCRIPTIONS.delete(SESSION_PREFIX + sessionId); } catch { /* ignore */ }
+  }
+  return jsonResponse({ success: true });
+}
+
+// GET /auth/me（Bearer）→ 現在のログイン状態とサブスク状態
+async function handleMe(request, env) {
+  const userId = await authenticate(request, env);
+  if (!userId) return jsonResponse({ error: "認証が必要です" }, 401);
+  const subscribed = await checkSubscription(userId, env);
+  let email = null;
+  try { email = atob(userId); } catch { /* ignore */ }
+  return jsonResponse({ userId, email, subscribed });
+}
+
+async function sendMagicLinkEmail(env, to, link) {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Oriacle <noreply@tomu-ai.dev>",
+      to: [to],
+      subject: "✦ Your Oriacle sign-in link",
+      html: buildMagicLinkHtml(link),
+    }),
+  });
+  if (!res.ok) {
+    console.error(`Magic link send failed (${to}): ${await res.text()}`);
+    throw new Error("Failed to send email");
+  }
+}
+
+function buildMagicLinkHtml(link) {
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#05050f;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#05050f;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding:0 28px 24px;text-align:center;">
+          <p style="margin:0;font-size:13px;letter-spacing:.3em;color:#c49bff;">✦ ORIACLE ✦</p>
+        </td></tr>
+        <tr><td style="padding:0 28px 24px;">
+          <div style="background:#11112a;border:1px solid #2a2a4a;border-radius:14px;padding:28px;text-align:center;">
+            <p style="margin:0 0 20px;font-size:14px;line-height:1.9;color:#e8e0f0;">Use the button below to sign in to Oriacle.<br/>This link expires in 15 minutes.</p>
+            <a href="${link}" style="display:inline-block;background:#c49bff;color:#05050f;text-decoration:none;font-size:14px;letter-spacing:.08em;padding:14px 32px;border-radius:10px;">Open the Door to the Stars</a>
+            <p style="margin:20px 0 0;font-size:11px;line-height:1.8;color:#8880a8;">If you didn't request this email, you can safely ignore it.</p>
+          </div>
+        </td></tr>
+        <tr><td style="padding:4px 28px 0;text-align:center;">
+          <p style="margin:0;font-size:10px;letter-spacing:.15em;color:#8880a8;">© 2026 Oriacle</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
+function authResultPage(message, ok) {
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Oriacle</title></head>
+<body style="margin:0;background:#05050f;color:#e8e0f0;font-family:Georgia,'Times New Roman',serif;display:flex;min-height:100vh;align-items:center;justify-content:center;">
+  <div style="max-width:420px;padding:2rem;text-align:center;">
+    <p style="font-size:13px;letter-spacing:.3em;color:#c49bff;margin:0 0 1.5rem;">✦ ORIACLE ✦</p>
+    <p style="font-size:14px;line-height:1.9;color:${ok ? "#e8e0f0" : "#ffb3b3"};">${escapeHtml(message)}</p>
+    <p style="margin-top:2rem;"><a href="${DEFAULT_REDIRECT_URL}" style="color:#c49bff;font-size:13px;">Back to top</a></p>
+  </div>
+</body></html>`;
+}
+
+function htmlResponse(html) {
+  return new Response(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
+// ============================================
 // Stripe Checkout セッション作成
 // ============================================
 
 async function handleStripeCheckout(request, env) {
-  const { userId, successUrl, cancelUrl } = await request.json();
-  if (!userId) return jsonResponse({ error: "userId が必要です" }, 400);
+  const userId = await authenticate(request, env);
+  if (!userId) return jsonResponse({ error: "認証が必要です" }, 401);
+  const { successUrl, cancelUrl } = await request.json();
 
   const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",
@@ -209,10 +544,12 @@ async function handleStripeWebhook(request, env) {
   const signature = request.headers.get("stripe-signature");
   const body = await request.text();
 
-  if (env.STRIPE_WEBHOOK_SECRET) {
-    const valid = await verifyStripeSignature(body, signature, env.STRIPE_WEBHOOK_SECRET);
-    if (!valid) return jsonResponse({ error: "署名が無効です" }, 400);
+  if (!env.STRIPE_WEBHOOK_SECRET) {
+    console.error("STRIPE_WEBHOOK_SECRET が未設定のため Webhook を拒否しました");
+    return jsonResponse({ error: "Webhook が正しく設定されていません" }, 500);
   }
+  const valid = await verifyStripeSignature(body, signature, env.STRIPE_WEBHOOK_SECRET);
+  if (!valid) return jsonResponse({ error: "署名が無効です" }, 400);
 
   const event = JSON.parse(body);
 
@@ -417,442 +754,359 @@ function calcGoKaku(fullName) {
 }
 
 // ============================================
-// ① 今日の星読み
+// 占い種別テーブル（READINGS）
+// 30種の占いを「データ」として一元管理する。各エントリ:
+//   system : 既定のシステムプロンプト
+//   vision : true なら画像（Vision API）を使う占い
+//   build(body) : 入力 body から以下のいずれかを返す
+//     { user, extra }                  … 通常占い（user=ユーザーメッセージ / extra=追加レスポンス項目）
+//     { system, user, extra }          … システムプロンプトを動的生成する占い（system が優先）
+//     { imageBase64, mimeType, extra } … vision の占い
+// ※ プロンプト内容・レスポンス形状は従来の個別ハンドラと完全一致させること。
 // ============================================
-async function handleStarReading(request, env) {
-  const { birthdate } = await request.json();
-  const sign = getSunSign(birthdate);
-  const result = await callClaude(
-    env,
-    `あなたは神秘的な星読み師です。以下の確定済みデータを元に、今日の星の配置に基づいたメッセージを詩的で神秘的な文体で日本語で届けてください。星座の判定は変えないでください。200〜300文字程度で。`,
-    `生年月日：${birthdate}\n太陽星座：${sign}`
-  );
-  return jsonResponse({ result, sign });
-}
+const READINGS = {
+  // ① 今日の星読み
+  "star-reading": {
+    system: `あなたは神秘的な星読み師です。以下の確定済みデータを元に、今日の星の配置に基づいたメッセージを詩的で神秘的な文体で日本語で届けてください。星座の判定は変えないでください。200〜300文字程度で。`,
+    build(body) {
+      const sign = getSunSign(body.birthdate);
+      return { user: `生年月日：${body.birthdate}\n太陽星座：${sign}`, extra: { sign } };
+    },
+  },
 
-// ============================================
-// ② 数秘術診断
-// ============================================
-async function handleNumerology(request, env) {
-  const { name, birthdate } = await request.json();
-  const lpn = getLifePathNumber(birthdate);
-  const result = await callClaude(
-    env,
-    `あなたは数秘術の達人です。以下の確定済みライフパスナンバーを元に、魂の使命と今世のテーマを神秘的な文体で日本語で伝えてください。ライフパスナンバーの数値は変えないでください。300文字程度で。`,
-    `名前：${name}\n生年月日：${birthdate}\nライフパスナンバー：${lpn}`
-  );
-  return jsonResponse({ result, lifePathNumber: lpn });
-}
+  // ② 数秘術診断
+  "numerology": {
+    system: `あなたは数秘術の達人です。以下の確定済みライフパスナンバーを元に、魂の使命と今世のテーマを神秘的な文体で日本語で伝えてください。ライフパスナンバーの数値は変えないでください。300文字程度で。`,
+    build(body) {
+      const lpn = getLifePathNumber(body.birthdate);
+      return { user: `名前：${body.name}\n生年月日：${body.birthdate}\nライフパスナンバー：${lpn}`, extra: { lifePathNumber: lpn } };
+    },
+  },
 
-// ============================================
-// ③ 守護星特定
-// ============================================
-async function handleGuardianStar(request, env) {
-  const { birthdate } = await request.json();
-  const sign = getSunSign(birthdate);
-  const result = await callClaude(
-    env,
-    `あなたは星の守護者です。以下の確定済みデータを元に、守護星の性質と今週の指針・開運アドバイスを神秘的な文体で日本語で届けてください。星座は変えないでください。300文字程度で。`,
-    `生年月日：${birthdate}\n太陽星座：${sign}`
-  );
-  return jsonResponse({ result, sign });
-}
+  // ③ 守護星特定
+  "guardian-star": {
+    system: `あなたは星の守護者です。以下の確定済みデータを元に、守護星の性質と今週の指針・開運アドバイスを神秘的な文体で日本語で届けてください。星座は変えないでください。300文字程度で。`,
+    build(body) {
+      const sign = getSunSign(body.birthdate);
+      return { user: `生年月日：${body.birthdate}\n太陽星座：${sign}`, extra: { sign } };
+    },
+  },
 
-// ============================================
-// ④ 九星気学診断
-// ============================================
-async function handleNineStarKi(request, env) {
-  const { birthdate } = await request.json();
-  const ki = getNineStarKi(birthdate);
-  const result = await callClaude(
-    env,
-    `あなたは九星気学の達人です。以下の確定済みデータを元に、その人の本質・人生テーマ・今年の運気を神秘的な文体で日本語で伝えてください。本命星の名前と番号は変えないでください。350文字程度で。`,
-    `生年月日：${birthdate}\n本命星：${ki.name}（${ki.num}）`
-  );
-  return jsonResponse({ result, honmeisei: ki.name, honmeiseiNum: ki.num });
-}
+  // ④ 九星気学診断
+  "nine-star-ki": {
+    system: `あなたは九星気学の達人です。以下の確定済みデータを元に、その人の本質・人生テーマ・今年の運気を神秘的な文体で日本語で伝えてください。本命星の名前と番号は変えないでください。350文字程度で。`,
+    build(body) {
+      const ki = getNineStarKi(body.birthdate);
+      return { user: `生年月日：${body.birthdate}\n本命星：${ki.name}（${ki.num}）`, extra: { honmeisei: ki.name, honmeiseiNum: ki.num } };
+    },
+  },
 
-// ============================================
-// ⑤ マヤ暦診断
-// ============================================
-async function handleMayaCalendar(request, env) {
-  const { birthdate, kin, tone, toneNumber, seal, wavespell, wavespellSeal } = await request.json();
-  const result = await callClaude(
-    env,
-    `ユーザーのKIN番号・太陽の紋章・ウェーブスペル・音はすでに正確に計算済みです。
+  // ⑤ マヤ暦診断
+  "maya-calendar": {
+    system: `ユーザーのKIN番号・太陽の紋章・ウェーブスペル・音はすでに正確に計算済みです。
 あなたが再計算する必要は一切ありません。
 必ず渡された値（KIN・紋章・ウェーブスペル・音）をそのまま使ってメッセージを作成してください。
 絶対に別のKIN番号や紋章を提示しないでください。
 
 あなたはマヤ暦の占い師です。以下の確定済みデータを元に、その魂のエネルギー・使命・才能を神秘的な文体で日本語で伝えてください。350文字程度で。`,
-    `生年月日：${birthdate}\nKIN番号：${kin}\n音（トーン）：${tone}（${toneNumber}）\n太陽の紋章：${seal}\nウェーブスペル：${wavespellSeal}のウェーブスペル（第${wavespell}ウェーブスペル）`
-  );
-  return jsonResponse({ result, kin, tone, toneNumber, seal, wavespell, wavespellSeal });
-}
+    build(body) {
+      const { birthdate, kin, tone, toneNumber, seal, wavespell, wavespellSeal } = body;
+      return {
+        user: `生年月日：${birthdate}\nKIN番号：${kin}\n音（トーン）：${tone}（${toneNumber}）\n太陽の紋章：${seal}\nウェーブスペル：${wavespellSeal}のウェーブスペル（第${wavespell}ウェーブスペル）`,
+        extra: { kin, tone, toneNumber, seal, wavespell, wavespellSeal },
+      };
+    },
+  },
 
-// ============================================
-// ⑥ 動物占い
-// ============================================
-async function handleAnimalFortune(request, env) {
-  const { birthdate, animal } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたは動物キャラナビの占い師です。「${animal}」タイプの人の性格・運勢・対人関係をスピリチュアルな観点で200字程度で鑑定してください。`,
-    `生年月日：${birthdate}、守護動物：${animal}`
-  );
-  return jsonResponse({ result, animal });
-}
+  // ⑥ 動物占い（システムプロンプトを動的生成）
+  "animal-fortune": {
+    build(body) {
+      const { birthdate, animal } = body;
+      return {
+        system: `あなたは動物キャラナビの占い師です。「${animal}」タイプの人の性格・運勢・対人関係をスピリチュアルな観点で200字程度で鑑定してください。`,
+        user: `生年月日：${birthdate}、守護動物：${animal}`,
+        extra: { animal },
+      };
+    },
+  },
 
-// ============================================
-// ⑦ 姓名判断
-// ============================================
-async function handleNameFortune(request, env) {
-  const { fullName, tenkaku: clientTk, jinkaku: clientJk, chikaku: clientCk, sotokaku: clientGk, soukaku: clientSk, confirmedGoKaku } = await request.json();
+  // ⑦ 姓名判断
+  "name-fortune": {
+    system: `あなたは姓名判断の達人です。以下の画数は確定値です。この数値を使って運命の流れと今後の指針を神秘的な文体で日本語で伝えてください。絶対に画数を再計算しないでください。400文字程度で。`,
+    build(body) {
+      const { fullName, tenkaku: clientTk, jinkaku: clientJk, chikaku: clientCk, sotokaku: clientGk, soukaku: clientSk, confirmedGoKaku } = body;
 
-  // クライアントから確定値が送られている場合はそれを優先（再計算しない）
-  let tk, jk, ck, gk, sk, unknownNote;
-  if (confirmedGoKaku && clientTk !== undefined) {
-    tk = clientTk; jk = clientJk; ck = clientCk; gk = clientGk; sk = clientSk;
-    unknownNote = (tk === '?' || jk === '?' || ck === '?' || gk === '?' || sk === '?')
-      ? '\n※一部の漢字の画数が未登録のため「?」としています。' : '';
-  } else {
-    const calc = calcGoKaku(fullName);
-    tk = calc.tenkaku; jk = calc.jinkaku; ck = calc.chikaku; gk = calc.sotokaku; sk = calc.soukaku;
-    unknownNote = calc.unknown ? '\n※一部の漢字の画数が未登録のため「?」としています。' : '';
-  }
+      // クライアントから確定値が送られている場合はそれを優先（再計算しない）
+      let tk, jk, ck, gk, sk, unknownNote;
+      if (confirmedGoKaku && clientTk !== undefined) {
+        tk = clientTk; jk = clientJk; ck = clientCk; gk = clientGk; sk = clientSk;
+        unknownNote = (tk === '?' || jk === '?' || ck === '?' || gk === '?' || sk === '?')
+          ? '\n※一部の漢字の画数が未登録のため「?」としています。' : '';
+      } else {
+        const calc = calcGoKaku(fullName);
+        tk = calc.tenkaku; jk = calc.jinkaku; ck = calc.chikaku; gk = calc.sotokaku; sk = calc.soukaku;
+        unknownNote = calc.unknown ? '\n※一部の漢字の画数が未登録のため「?」としています。' : '';
+      }
 
-  const result = await callClaude(
-    env,
-    `あなたは姓名判断の達人です。以下の画数は確定値です。この数値を使って運命の流れと今後の指針を神秘的な文体で日本語で伝えてください。絶対に画数を再計算しないでください。400文字程度で。`,
-    `氏名：${fullName}
+      return {
+        user: `氏名：${fullName}
 【確定済み五格 — 絶対に再計算しないでください】
 天格：${tk}（確定値）
 人格：${jk}（確定値）
 地格：${ck}（確定値）
 外格：${gk}（確定値）
 総格：${sk}（確定値）${unknownNote}
-以上の数値をそのまま使い、独自に画数を算出・修正しないでください。`
-  );
-  return jsonResponse({ result, goKaku: { tenkaku: tk, jinkaku: jk, chikaku: ck, sotokaku: gk, soukaku: sk } });
-}
+以上の数値をそのまま使い、独自に画数を算出・修正しないでください。`,
+        extra: { goKaku: { tenkaku: tk, jinkaku: jk, chikaku: ck, sotokaku: gk, soukaku: sk } },
+      };
+    },
+  },
 
-// ============================================
-// ⑧ バイオリズム
-// ============================================
-async function handleBiorhythm(request, env) {
-  const { birthdate, targetDate, physical, emotional, intellectual } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたはバイオリズムを読む占い師です。指定日における肉体・感情・知性の3つのリズム値を受け取り、その人の今日のコンディションと取るべき行動指針を神秘的な文体で日本語で伝えてください。300文字程度で。`,
-    `対象日：${targetDate}、肉体リズム：${physical}%、感情リズム：${emotional}%、知性リズム：${intellectual}%`
-  );
-  return jsonResponse({ result });
-}
+  // ⑧ バイオリズム
+  "biorhythm": {
+    system: `あなたはバイオリズムを読む占い師です。指定日における肉体・感情・知性の3つのリズム値を受け取り、その人の今日のコンディションと取るべき行動指針を神秘的な文体で日本語で伝えてください。300文字程度で。`,
+    build(body) {
+      const { targetDate, physical, emotional, intellectual } = body;
+      return { user: `対象日：${targetDate}、肉体リズム：${physical}%、感情リズム：${emotional}%、知性リズム：${intellectual}%` };
+    },
+  },
 
-// ============================================
-// ⑨ ムーンサイン診断
-// ============================================
-async function handleMoonSign(request, env) {
-  const { birthdate, zodiacSign, lifePathNumber, moonSign } = await request.json();
-  const sign = zodiacSign || getSunSign(birthdate);
-  const lpn = lifePathNumber || getLifePathNumber(birthdate);
-  const result = await callClaude(
-    env,
-    `あなたは月星座の占い師です。以下の確定済みデータを元に、その人の内面・感情パターン・本当の欲求を神秘的な文体で日本語で伝えてください。太陽星座・月星座・ライフパスナンバーは変えないでください。300文字程度で。`,
-    `生年月日：${birthdate}\n太陽星座：${sign}\n月星座：${moonSign}\nライフパスナンバー：${lpn}`
-  );
-  return jsonResponse({ result, sunSign: sign, moonSign, lifePathNumber: lpn });
-}
+  // ⑨ ムーンサイン診断
+  "moon-sign": {
+    system: `あなたは月星座の占い師です。以下の確定済みデータを元に、その人の内面・感情パターン・本当の欲求を神秘的な文体で日本語で伝えてください。太陽星座・月星座・ライフパスナンバーは変えないでください。300文字程度で。`,
+    build(body) {
+      const { birthdate, zodiacSign, lifePathNumber, moonSign } = body;
+      const sign = zodiacSign || getSunSign(birthdate);
+      const lpn = lifePathNumber || getLifePathNumber(birthdate);
+      return {
+        user: `生年月日：${birthdate}\n太陽星座：${sign}\n月星座：${moonSign}\nライフパスナンバー：${lpn}`,
+        extra: { sunSign: sign, moonSign, lifePathNumber: lpn },
+      };
+    },
+  },
 
-// ============================================
-// ⑩ 東洋星座×干支診断
-// ============================================
-async function handleEasternStars(request, env) {
-  const { birthdate } = await request.json();
-  const eto = getEto(birthdate);
-  const ki = getNineStarKi(birthdate);
-  const result = await callClaude(
-    env,
-    `あなたは東洋占星術の達人です。以下の確定済みデータを元に、その人の宿命・才能・今年の運勢を神秘的な文体で日本語で伝えてください。干支・本命星は変えないでください。350文字程度で。`,
-    `生年月日：${birthdate}\n干支：${eto.kan}${eto.eto}\n本命星：${ki.name}`
-  );
-  return jsonResponse({ result, eto: `${eto.kan}${eto.eto}`, honmeisei: ki.name });
-}
+  // ⑩ 東洋星座×干支診断
+  "eastern-stars": {
+    system: `あなたは東洋占星術の達人です。以下の確定済みデータを元に、その人の宿命・才能・今年の運勢を神秘的な文体で日本語で伝えてください。干支・本命星は変えないでください。350文字程度で。`,
+    build(body) {
+      const eto = getEto(body.birthdate);
+      const ki = getNineStarKi(body.birthdate);
+      return {
+        user: `生年月日：${body.birthdate}\n干支：${eto.kan}${eto.eto}\n本命星：${ki.name}`,
+        extra: { eto: `${eto.kan}${eto.eto}`, honmeisei: ki.name },
+      };
+    },
+  },
 
-// ============================================
-// ⑪ ホロスコープ詳細
-// ============================================
-async function handleHoroscopeDeep(request, env) {
-  const { birthdate, birthTime, birthPlace, zodiacSign, moonSign } = await request.json();
-  const sign = zodiacSign || getSunSign(birthdate);
-  const result = await callClaude(
-    env,
-    `あなたは本格的な西洋占星術師です。以下の確定済みデータを元に、その人の本質・魂のテーマ・今後の流れを神秘的で詳しい文体で日本語で伝えてください。太陽星座・月星座は変えないでください。出生時刻・出生地からアセンダントの考察も加えてください。500文字程度で。`,
-    `生年月日：${birthdate}\n太陽星座：${sign}\n月星座：${moonSign}\n出生時刻：${birthTime}\n出生地：${birthPlace}`
-  );
-  return jsonResponse({ result, sunSign: sign, moonSign });
-}
+  // ⑪ ホロスコープ詳細
+  "horoscope-deep": {
+    system: `あなたは本格的な西洋占星術師です。以下の確定済みデータを元に、その人の本質・魂のテーマ・今後の流れを神秘的で詳しい文体で日本語で伝えてください。太陽星座・月星座は変えないでください。出生時刻・出生地からアセンダントの考察も加えてください。500文字程度で。`,
+    build(body) {
+      const { birthdate, birthTime, birthPlace, zodiacSign, moonSign } = body;
+      const sign = zodiacSign || getSunSign(birthdate);
+      return {
+        user: `生年月日：${birthdate}\n太陽星座：${sign}\n月星座：${moonSign}\n出生時刻：${birthTime}\n出生地：${birthPlace}`,
+        extra: { sunSign: sign, moonSign },
+      };
+    },
+  },
 
-// ============================================
-// ⑫ タロット一枚引き
-// ============================================
-async function handleTarot(request, env) {
-  const { card } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたは神秘的なタロット占い師です。引いたカードのエネルギーと意味を、今この瞬間のユーザーへのメッセージとして神秘的な文体で日本語で届けてください。300文字程度で。`,
-    `引いたカード：${card}`
-  );
-  return jsonResponse({ result });
-}
+  // ⑫ タロット一枚引き
+  "tarot": {
+    system: `あなたは神秘的なタロット占い師です。引いたカードのエネルギーと意味を、今この瞬間のユーザーへのメッセージとして神秘的な文体で日本語で届けてください。300文字程度で。`,
+    build(body) {
+      return { user: `引いたカード：${body.card}` };
+    },
+  },
 
-// ============================================
-// ⑬ ルーン占い
-// ============================================
-async function handleRuneReading(request, env) {
-  const { rune } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたは北欧の神秘を伝えるルーン占い師です。引いたルーン文字の古代的な意味・エネルギー・今の状況へのメッセージを神秘的な文体で日本語で届けてください。300文字程度で。`,
-    `引いたルーン：${rune}`
-  );
-  return jsonResponse({ result });
-}
+  // ⑬ ルーン占い
+  "rune-reading": {
+    system: `あなたは北欧の神秘を伝えるルーン占い師です。引いたルーン文字の古代的な意味・エネルギー・今の状況へのメッセージを神秘的な文体で日本語で届けてください。300文字程度で。`,
+    build(body) {
+      return { user: `引いたルーン：${body.rune}` };
+    },
+  },
 
-// ============================================
-// ⑭ オラクルカード
-// ============================================
-async function handleOracleCards(request, env) {
-  const { theme, card } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたは宇宙のメッセージを伝えるオラクルカードリーダーです。テーマとカードを受け取り、今この瞬間の宇宙からの神秘的なメッセージを詩的な日本語で届けてください。300文字程度で。`,
-    `テーマ：${theme}、カード：${card}`
-  );
-  return jsonResponse({ result });
-}
+  // ⑭ オラクルカード
+  "oracle-cards": {
+    system: `あなたは宇宙のメッセージを伝えるオラクルカードリーダーです。テーマとカードを受け取り、今この瞬間の宇宙からの神秘的なメッセージを詩的な日本語で届けてください。300文字程度で。`,
+    build(body) {
+      return { user: `テーマ：${body.theme}、カード：${body.card}` };
+    },
+  },
 
-// ============================================
-// ⑮ 九宮格診断
-// ============================================
-async function handleNinePalace(request, env) {
-  const { selectedPalace, birthdate, honmeisei: clientHonmei, honmeiseiNum: clientNum } = await request.json();
-  const ki = clientHonmei ? { name: clientHonmei, num: clientNum } : getNineStarKi(birthdate);
-  const result = await callClaude(
-    env,
-    `あなたは九宮格（風水×気学）の達人です。以下の確定済みデータを元に、今のあなたの運気の流れと開運の鍵を神秘的な文体で日本語で伝えてください。本命星は変えないでください。350文字程度で。`,
-    `生年月日：${birthdate}、本命星：${ki.name}（${ki.num}）、直感で選んだ宮：${selectedPalace}`
-  );
-  return jsonResponse({ result, honmeisei: ki.name, honmeiseiNum: ki.num });
-}
+  // ⑮ 九宮格診断
+  "nine-palace": {
+    system: `あなたは九宮格（風水×気学）の達人です。以下の確定済みデータを元に、今のあなたの運気の流れと開運の鍵を神秘的な文体で日本語で伝えてください。本命星は変えないでください。350文字程度で。`,
+    build(body) {
+      const { selectedPalace, birthdate, honmeisei: clientHonmei, honmeiseiNum: clientNum } = body;
+      const ki = clientHonmei ? { name: clientHonmei, num: clientNum } : getNineStarKi(birthdate);
+      return {
+        user: `生年月日：${birthdate}、本命星：${ki.name}（${ki.num}）、直感で選んだ宮：${selectedPalace}`,
+        extra: { honmeisei: ki.name, honmeiseiNum: ki.num },
+      };
+    },
+  },
 
-// ============================================
-// ⑯ 前世診断
-// ============================================
-async function handlePastLife(request, env) {
-  const { answers } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたは魂の記憶を読む前世占い師です。ユーザーの回答から前世の物語を読み解き、魂が歩んできた旅を神秘的で詩的な日本語で語ってください。400文字程度で。`,
-    `回答：${JSON.stringify(answers)}`
-  );
-  return jsonResponse({ result });
-}
+  // ⑯ 前世診断
+  "past-life": {
+    system: `あなたは魂の記憶を読む前世占い師です。ユーザーの回答から前世の物語を読み解き、魂が歩んできた旅を神秘的で詩的な日本語で語ってください。400文字程度で。`,
+    build(body) {
+      return { user: `回答：${JSON.stringify(body.answers)}` };
+    },
+  },
 
-// ============================================
-// ⑰ 前世の職業診断
-// ============================================
-async function handlePastProfession(request, env) {
-  const { answers } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたは魂の過去を読む前世職業占い師です。ユーザーの回答から前世で担っていた職業・役割（神官、騎士、薬師、吟遊詩人など）を特定し、その魂が持つスキルと今世への影響を神秘的な文体で日本語で伝えてください。400文字程度で。`,
-    `回答：${JSON.stringify(answers)}`
-  );
-  return jsonResponse({ result });
-}
+  // ⑰ 前世の職業診断
+  "past-profession": {
+    system: `あなたは魂の過去を読む前世職業占い師です。ユーザーの回答から前世で担っていた職業・役割（神官、騎士、薬師、吟遊詩人など）を特定し、その魂が持つスキルと今世への影響を神秘的な文体で日本語で伝えてください。400文字程度で。`,
+    build(body) {
+      return { user: `回答：${JSON.stringify(body.answers)}` };
+    },
+  },
 
-// ============================================
-// ⑱ 魂の使命診断
-// ============================================
-async function handleSoulMission(request, env) {
-  const { answers } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたは魂の設計図を読む占い師です。ユーザーの回答から今世の魂の使命・ライフテーマ・与えるべきギフトを読み解き、宇宙からのメッセージとして神秘的な文体で日本語で伝えてください。400文字程度で。`,
-    `回答：${JSON.stringify(answers)}`
-  );
-  return jsonResponse({ result });
-}
+  // ⑱ 魂の使命診断
+  "soul-mission": {
+    system: `あなたは魂の設計図を読む占い師です。ユーザーの回答から今世の魂の使命・ライフテーマ・与えるべきギフトを読み解き、宇宙からのメッセージとして神秘的な文体で日本語で伝えてください。400文字程度で。`,
+    build(body) {
+      return { user: `回答：${JSON.stringify(body.answers)}` };
+    },
+  },
 
-// ============================================
-// ⑲ 精霊動物診断
-// ============================================
-async function handleSpiritAnimal(request, env) {
-  const { answers } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたはシャーマニックな精霊動物ガイドです。ユーザーの回答から守護精霊動物を特定し、その動物のエネルギー・もたらすメッセージ・今週の指針を神秘的な文体で日本語で届けてください。400文字程度で。`,
-    `回答：${JSON.stringify(answers)}`
-  );
-  return jsonResponse({ result });
-}
+  // ⑲ 精霊動物診断
+  "spirit-animal": {
+    system: `あなたはシャーマニックな精霊動物ガイドです。ユーザーの回答から守護精霊動物を特定し、その動物のエネルギー・もたらすメッセージ・今週の指針を神秘的な文体で日本語で届けてください。400文字程度で。`,
+    build(body) {
+      return { user: `回答：${JSON.stringify(body.answers)}` };
+    },
+  },
 
-// ============================================
-// ⑳ オーラカラー診断
-// ============================================
-async function handleAuraReading(request, env) {
-  const { answers } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたはオーラを視るスピリチュアルリーダーです。ユーザーの回答から現在のオーラカラーを特定し、そのエネルギーの意味・魂の状態・今週の開運カラーを神秘的な文体で日本語で伝えてください。400文字程度で。`,
-    `回答：${JSON.stringify(answers)}`
-  );
-  return jsonResponse({ result });
-}
+  // ⑳ オーラカラー診断
+  "aura-reading": {
+    system: `あなたはオーラを視るスピリチュアルリーダーです。ユーザーの回答から現在のオーラカラーを特定し、そのエネルギーの意味・魂の状態・今週の開運カラーを神秘的な文体で日本語で伝えてください。400文字程度で。`,
+    build(body) {
+      return { user: `回答：${JSON.stringify(body.answers)}` };
+    },
+  },
 
-// ============================================
-// ㉑ チャクラ診断
-// ============================================
-async function handleChakraCheck(request, env) {
-  const { answers, chakra, chakraNum } = await request.json();
-  const chakraDesc = chakra ? `特定チャクラ：${chakra}（${chakraNum}）` : `回答：${JSON.stringify(answers)}`;
-  const result = await callClaude(
-    env,
-    `あなたはチャクラを診るエネルギーヒーラーです。以下の確定済みデータを元に、そのチャクラの意味・滞りの原因・解放のための実践・魂のメッセージを神秘的な文体で日本語で伝えてください。チャクラ名は変えないでください。400文字程度で。`,
-    `${chakraDesc}\n感情の詰まり：${answers.q2}\n意識したいテーマ：${answers.q3}`
-  );
-  return jsonResponse({ result, chakra, chakraNum });
-}
+  // ㉑ チャクラ診断
+  "chakra-check": {
+    system: `あなたはチャクラを診るエネルギーヒーラーです。以下の確定済みデータを元に、そのチャクラの意味・滞りの原因・解放のための実践・魂のメッセージを神秘的な文体で日本語で伝えてください。チャクラ名は変えないでください。400文字程度で。`,
+    build(body) {
+      const { answers, chakra, chakraNum } = body;
+      const chakraDesc = chakra ? `特定チャクラ：${chakra}（${chakraNum}）` : `回答：${JSON.stringify(answers)}`;
+      return {
+        user: `${chakraDesc}\n感情の詰まり：${answers.q2}\n意識したいテーマ：${answers.q3}`,
+        extra: { chakra, chakraNum },
+      };
+    },
+  },
 
-// ============================================
-// ㉒ オラクルメッセージ
-// ============================================
-async function handleOracleMessage(request, env) {
-  const { feeling } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたは宇宙のチャネラーです。ユーザーの今の気持ちや状況を受け取り、宇宙からの神秘的なメッセージを詩的な日本語で届けてください。150〜200文字程度で。`,
-    `今の気持ち・状況：${feeling}`
-  );
-  return jsonResponse({ result });
-}
+  // ㉒ オラクルメッセージ
+  "oracle-message": {
+    system: `あなたは宇宙のチャネラーです。ユーザーの今の気持ちや状況を受け取り、宇宙からの神秘的なメッセージを詩的な日本語で届けてください。150〜200文字程度で。`,
+    build(body) {
+      return { user: `今の気持ち・状況：${body.feeling}` };
+    },
+  },
 
-// ============================================
-// ㉓ 夢解読AI
-// ============================================
-async function handleDreamDecoder(request, env) {
-  const { dream } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたはスピリチュアルな夢解読師です。ユーザーが見た夢の内容を受け取り、象徴・潜在意識・スピリチュアルな意味を神秘的な文体で日本語で解説してください。300文字程度で。`,
-    `夢の内容：${dream}`
-  );
-  return jsonResponse({ result });
-}
+  // ㉓ 夢解読AI
+  "dream-decoder": {
+    system: `あなたはスピリチュアルな夢解読師です。ユーザーが見た夢の内容を受け取り、象徴・潜在意識・スピリチュアルな意味を神秘的な文体で日本語で解説してください。300文字程度で。`,
+    build(body) {
+      return { user: `夢の内容：${body.dream}` };
+    },
+  },
 
-// ============================================
-// ㉔ 縁結び相性診断
-// ============================================
-async function handleSoulCompatibility(request, env) {
-  const { birthdate1, birthdate2 } = await request.json();
-  const s1 = getSunSign(birthdate1), s2 = getSunSign(birthdate2);
-  const l1 = getLifePathNumber(birthdate1), l2 = getLifePathNumber(birthdate2);
-  const result = await callClaude(
-    env,
-    `あなたは魂の縁を読む占い師です。以下の確定済みデータを元に、2人の魂レベルの相性・絆の意味・共に成長するための鍵を神秘的な文体で日本語で届けてください。星座とライフパスナンバーは変えないでください。300文字程度で。`,
-    `1人目：生年月日${birthdate1}・${s1}・ライフパスナンバー${l1}\n2人目：生年月日${birthdate2}・${s2}・ライフパスナンバー${l2}`
-  );
-  return jsonResponse({ result, person1:{sign:s1,lpn:l1}, person2:{sign:s2,lpn:l2} });
-}
+  // ㉔ 縁結び相性診断
+  "soul-compatibility": {
+    system: `あなたは魂の縁を読む占い師です。以下の確定済みデータを元に、2人の魂レベルの相性・絆の意味・共に成長するための鍵を神秘的な文体で日本語で届けてください。星座とライフパスナンバーは変えないでください。300文字程度で。`,
+    build(body) {
+      const { birthdate1, birthdate2 } = body;
+      const s1 = getSunSign(birthdate1), s2 = getSunSign(birthdate2);
+      const l1 = getLifePathNumber(birthdate1), l2 = getLifePathNumber(birthdate2);
+      return {
+        user: `1人目：生年月日${birthdate1}・${s1}・ライフパスナンバー${l1}\n2人目：生年月日${birthdate2}・${s2}・ライフパスナンバー${l2}`,
+        extra: { person1: { sign: s1, lpn: l1 }, person2: { sign: s2, lpn: l2 } },
+      };
+    },
+  },
 
-// ============================================
-// ㉕ 夢の色彩診断
-// ============================================
-async function handleDreamColors(request, env) {
-  const { colors } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたは色彩心理とスピリチュアルを組み合わせた夢解読師です。夢に現れた色の組み合わせから潜在意識のメッセージ・魂の状態・今必要なエネルギーを神秘的な文体で日本語で伝えてください。300文字程度で。`,
-    `夢に出た色：${colors.join("、")}`
-  );
-  return jsonResponse({ result });
-}
+  // ㉕ 夢の色彩診断
+  "dream-colors": {
+    system: `あなたは色彩心理とスピリチュアルを組み合わせた夢解読師です。夢に現れた色の組み合わせから潜在意識のメッセージ・魂の状態・今必要なエネルギーを神秘的な文体で日本語で伝えてください。300文字程度で。`,
+    build(body) {
+      return { user: `夢に出た色：${body.colors.join("、")}` };
+    },
+  },
 
-// ============================================
-// ㉖ 月相ジャーナル
-// ============================================
-async function handleMoonJournal(request, env) {
-  const body = await request.json().catch(()=>({}));
-  const today = body.today || new Date().toISOString().split("T")[0];
-  const moonPhase = body.moonPhase || null;
-  const moonAge = body.moonAge ?? null;
-  const phaseDesc = moonPhase ? `月相：${moonPhase}（月齢約${moonAge}日）` : `今日の日付：${today}`;
-  const result = await callClaude(
-    env,
-    `あなたは月の神秘を語る案内人です。以下の確定済み月相データを元に、内省のための問いかけと月からのメッセージを詩的な日本語で届けてください。月相名は変えないでください。250文字程度で。`,
-    `今日の日付：${today}\n${phaseDesc}`
-  );
-  return jsonResponse({ result, moonPhase, moonAge });
-}
+  // ㉖ 月相ジャーナル
+  "moon-journal": {
+    system: `あなたは月の神秘を語る案内人です。以下の確定済み月相データを元に、内省のための問いかけと月からのメッセージを詩的な日本語で届けてください。月相名は変えないでください。250文字程度で。`,
+    build(body) {
+      const today = body.today || new Date().toISOString().split("T")[0];
+      const moonPhase = body.moonPhase || null;
+      const moonAge = body.moonAge ?? null;
+      const phaseDesc = moonPhase ? `月相：${moonPhase}（月齢約${moonAge}日）` : `今日の日付：${today}`;
+      return { user: `今日の日付：${today}\n${phaseDesc}`, extra: { moonPhase, moonAge } };
+    },
+  },
 
-// ============================================
-// ㉗ 今日の宇宙メッセージ
-// ============================================
-async function handleCosmicMessage(request, env) {
-  const body = await request.json().catch(()=>({}));
-  const today = body.today || new Date().toISOString().split("T")[0];
-  const cosmicNumber = body.cosmicNumber ?? null;
-  const numDesc = cosmicNumber !== null ? `\n今日の宇宙数：${cosmicNumber}` : '';
-  const result = await callClaude(
-    env,
-    `あなたは宇宙の意識とつながるチャネラーです。以下の確定済み日付データを元に、今日この日の宇宙的エネルギーと地球上のすべての魂へのメッセージを詩的で神秘的な日本語で届けてください。宇宙数は変えないでください。250文字程度で。`,
-    `今日の日付：${today}${numDesc}`
-  );
-  return jsonResponse({ result, cosmicNumber });
-}
+  // ㉗ 今日の宇宙メッセージ
+  "cosmic-message": {
+    system: `あなたは宇宙の意識とつながるチャネラーです。以下の確定済み日付データを元に、今日この日の宇宙的エネルギーと地球上のすべての魂へのメッセージを詩的で神秘的な日本語で届けてください。宇宙数は変えないでください。250文字程度で。`,
+    build(body) {
+      const today = body.today || new Date().toISOString().split("T")[0];
+      const cosmicNumber = body.cosmicNumber ?? null;
+      const numDesc = cosmicNumber !== null ? `\n今日の宇宙数：${cosmicNumber}` : '';
+      return { user: `今日の日付：${today}${numDesc}`, extra: { cosmicNumber } };
+    },
+  },
 
-// ============================================
-// ㉘ 今日の開運カラー
-// ============================================
-async function handleLuckyColor(request, env) {
-  const { birthdate, targetDate } = await request.json();
-  const ki = getNineStarKi(birthdate);
-  const sign = getSunSign(birthdate);
-  const lpn = getLifePathNumber(birthdate);
-  const result = await callClaude(
-    env,
-    `あなたは色彩運気の占い師です。以下の確定済みデータを元に、今日最も開運をもたらすラッキーカラーを特定し、その色のエネルギー・使い方・今日のアドバイスを神秘的な文体で日本語で伝えてください。本命星・星座・数字は変えないでください。300文字程度で。`,
-    `生年月日：${birthdate}\n対象日：${targetDate}\n本命星：${ki.name}\n太陽星座：${sign}\nライフパスナンバー：${lpn}`
-  );
-  return jsonResponse({ result, honmeisei: ki.name, sign, lifePathNumber: lpn });
-}
+  // ㉘ 今日の開運カラー
+  "lucky-color": {
+    system: `あなたは色彩運気の占い師です。以下の確定済みデータを元に、今日最も開運をもたらすラッキーカラーを特定し、その色のエネルギー・使い方・今日のアドバイスを神秘的な文体で日本語で伝えてください。本命星・星座・数字は変えないでください。300文字程度で。`,
+    build(body) {
+      const { birthdate, targetDate } = body;
+      const ki = getNineStarKi(birthdate);
+      const sign = getSunSign(birthdate);
+      const lpn = getLifePathNumber(birthdate);
+      return {
+        user: `生年月日：${birthdate}\n対象日：${targetDate}\n本命星：${ki.name}\n太陽星座：${sign}\nライフパスナンバー：${lpn}`,
+        extra: { honmeisei: ki.name, sign, lifePathNumber: lpn },
+      };
+    },
+  },
 
-// ============================================
-// ㉙ パワーストーン診断
-// ============================================
-async function handleCrystalGuide(request, env) {
-  const { currentState } = await request.json();
-  const result = await callClaude(
-    env,
-    `あなたはクリスタルヒーラーです。ユーザーの今の状態を受け取り、最も必要なパワーストーン（水晶、アメジスト、ローズクォーツなど）を特定し、その石のエネルギー・使い方・癒しのメッセージを神秘的な文体で日本語で伝えてください。350文字程度で。`,
-    `今の状態：${currentState}`
-  );
-  return jsonResponse({ result });
-}
+  // ㉙ パワーストーン診断
+  "crystal-guide": {
+    system: `あなたはクリスタルヒーラーです。ユーザーの今の状態を受け取り、最も必要なパワーストーン（水晶、アメジスト、ローズクォーツなど）を特定し、その石のエネルギー・使い方・癒しのメッセージを神秘的な文体で日本語で伝えてください。350文字程度で。`,
+    build(body) {
+      return { user: `今の状態：${body.currentState}` };
+    },
+  },
 
-// ============================================
-// ㉚ 手相占い（Vision API使用）
-// ============================================
-async function handlePalmReading(request, env) {
-  const { imageBase64, mimeType } = await request.json();
-  const result = await callClaudeVision(
-    env,
-    `あなたは神秘的な手相占い師です。手のひらの画像を見て、生命線・感情線・頭脳線・運命線・太陽線を丁寧に読み取り、その人の生命力・感情パターン・知性・運命の流れを神秘的で詩的な日本語で伝えてください。400文字程度で。`,
-    imageBase64,
-    mimeType || "image/jpeg"
-  );
-  return jsonResponse({ result });
+  // ㉚ 手相占い（Vision API使用）
+  "palm-reading": {
+    vision: true,
+    system: `あなたは神秘的な手相占い師です。手のひらの画像を見て、生命線・感情線・頭脳線・運命線・太陽線を丁寧に読み取り、その人の生命力・感情パターン・知性・運命の流れを神秘的で詩的な日本語で伝えてください。400文字程度で。`,
+    build(body) {
+      return { imageBase64: body.imageBase64, mimeType: body.mimeType || "image/jpeg" };
+    },
+  },
+};
+
+// 占いリクエスト共通ハンドラ。
+// READINGS を参照して「確定計算 → Claude 呼び出し → JSONレスポンス」を行う。
+// 認証・サブスク・入力バリデーション・レートリミットは呼び出し側（fetch）で実施済み。
+async function handleMysticRequest(action, body, env) {
+  const reading = READINGS[action];
+  if (!reading) return jsonResponse({ error: "Not Found" }, 404);
+  const built = reading.build(body);
+  const system = built.system || reading.system;
+  const result = reading.vision
+    ? await callClaudeVision(env, system, built.imageBase64, built.mimeType)
+    : await callClaude(env, system, built.user);
+  return jsonResponse({ result, ...(built.extra || {}) });
 }
 
 // ============================================

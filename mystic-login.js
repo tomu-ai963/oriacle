@@ -1,101 +1,141 @@
 // ============================================
-// Oriacle — mystic-login.js (Stripe integration)
+// Oriacle — mystic-login.js (Magic-link auth)
+// Frontend = github.io / API = workers.dev (cross-site),
+// so instead of an HttpOnly cookie we keep the sessionId in
+// localStorage and send it via Authorization: Bearer.
 // ============================================
 
 const WORKER_URL = "https://mystic-system-worker.inverted-triangle-leef.workers.dev";
 
 const MysticAuth = {
-  USER_ID_KEY: "mystic_user_id",
+  SESSION_KEY: "mystic_session",
   SUBSCRIPTION_KEY: "mystic_subscription",
+  EMAIL_KEY: "mystic_email",
 
-  getUserId() {
-    return localStorage.getItem(this.USER_ID_KEY);
-  },
-
-  async login(email) {
-    if (!email || !email.includes("@")) {
-      throw new Error("Please enter a valid email address");
-    }
-    const userId = btoa(email.toLowerCase().trim());
-    localStorage.setItem(this.USER_ID_KEY, userId);
-
-    const subscribed = await this.checkSubscription(userId);
-    localStorage.setItem(this.SUBSCRIPTION_KEY, subscribed ? "active" : "inactive");
-    return { userId, subscribed };
-  },
-
-  logout() {
-    localStorage.removeItem(this.USER_ID_KEY);
-    localStorage.removeItem(this.SUBSCRIPTION_KEY);
-  },
-
-  async checkSubscription(userId) {
-    try {
-      const res = await fetch(`${WORKER_URL}/subscription/check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      });
-      const data = await res.json();
-      return data.subscribed === true;
-    } catch {
-      return false;
-    }
+  getSession() {
+    return localStorage.getItem(this.SESSION_KEY);
   },
 
   isLoggedIn() {
-    return !!this.getUserId();
+    return !!this.getSession();
   },
 
   isSubscribed() {
     return localStorage.getItem(this.SUBSCRIPTION_KEY) === "active";
   },
 
-  // Redirect to the Stripe Checkout page
-  async startCheckout() {
-    const userId = this.getUserId();
-    if (!userId) throw new Error("Login required");
+  authHeaders(extra = {}) {
+    const sid = this.getSession();
+    return sid ? { ...extra, "Authorization": `Bearer ${sid}` } : { ...extra };
+  },
 
-    const res = await fetch(`${WORKER_URL}/stripe/checkout`, {
+  // Landing from /auth/verify: capture #mystic_sid=...
+  captureSessionFromUrl() {
+    const m = location.hash.match(/[#&]mystic_sid=([^&]+)/);
+    if (!m) return false;
+    const sid = decodeURIComponent(m[1]);
+    localStorage.setItem(this.SESSION_KEY, sid);
+    history.replaceState({}, "", location.pathname + location.search);
+    return true;
+  },
+
+  // Request a magic link (not logged in yet at this point)
+  async requestMagicLink(email) {
+    if (!email || !email.includes("@")) {
+      throw new Error("Please enter a valid email address");
+    }
+    const res = await fetch(`${WORKER_URL}/auth/request-magic-link`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        userId,
-        successUrl: `${location.origin}/mystic/?checkout=success`,
-        cancelUrl:  `${location.origin}/mystic/?checkout=cancel`,
+        email: email.toLowerCase().trim(),
+        redirect: location.href.split("#")[0],
       }),
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Failed to send the email");
+    return true;
+  },
 
-    const data = await res.json();
+  // Verify the session on the server and cache subscription state
+  async refreshMe() {
+    const sid = this.getSession();
+    if (!sid) return { loggedIn: false, subscribed: false };
+    let res;
+    try {
+      res = await fetch(`${WORKER_URL}/auth/me`, { headers: this.authHeaders() });
+    } catch {
+      return { loggedIn: true, subscribed: this.isSubscribed() };
+    }
+    if (res.status === 401) {
+      this.logout();
+      return { loggedIn: false, subscribed: false };
+    }
+    const data = await res.json().catch(() => ({}));
+    const subscribed = data.subscribed === true;
+    localStorage.setItem(this.SUBSCRIPTION_KEY, subscribed ? "active" : "inactive");
+    if (data.email) localStorage.setItem(this.EMAIL_KEY, data.email);
+    return { loggedIn: true, subscribed, email: data.email };
+  },
+
+  // Registered email cached by refreshMe (for the My Page view)
+  getEmail() {
+    return localStorage.getItem(this.EMAIL_KEY) || "";
+  },
+
+  async logout() {
+    const sid = this.getSession();
+    if (sid) {
+      try {
+        await fetch(`${WORKER_URL}/auth/logout`, { method: "POST", headers: this.authHeaders() });
+      } catch { /* ignore */ }
+    }
+    localStorage.removeItem(this.SESSION_KEY);
+    localStorage.removeItem(this.SUBSCRIPTION_KEY);
+    localStorage.removeItem(this.EMAIL_KEY);
+  },
+
+  // Redirect to the Stripe Checkout page
+  async startCheckout() {
+    if (!this.isLoggedIn()) throw new Error("Login required");
+    const res = await fetch(`${WORKER_URL}/stripe/checkout`, {
+      method: "POST",
+      headers: this.authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        successUrl: `${location.origin}${location.pathname}?checkout=success`,
+        cancelUrl:  `${location.origin}${location.pathname}?checkout=cancel`,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.url) throw new Error(data.error || "Failed to load the payment page");
     location.href = data.url;
   },
 
   // Shared helper used by every app to call the AI API
   async callApi(endpoint, body) {
-    const userId = this.getUserId();
-    if (!userId) throw new Error("Login required");
+    if (!this.isLoggedIn()) throw new Error("Login required");
 
     // /mystic/star-reading → action: "star-reading"
     const action = endpoint.replace(/^\/mystic\//, "");
 
     const res = await fetch(`${WORKER_URL}/api/mystic`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-Id": userId,
-      },
+      headers: this.authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ action, ...body }),
     });
 
-    const data = await res.json();
+    if (res.status === 401) {
+      this.logout();
+      throw new Error("Your session has expired. Please sign in again.");
+    }
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "An API error occurred");
     return data;
   },
 };
 
 // ============================================
-// Login UI
+// Login UI (email input → send magic link)
 // ============================================
 
 function renderLoginModal() {
@@ -108,7 +148,7 @@ function renderLoginModal() {
       <div class="mystic-modal-box">
         <div class="mystic-modal-star">✦</div>
         <h2 class="mystic-modal-title">Oriacle</h2>
-        <p class="mystic-modal-subtitle">Enter with your email to begin your journey</p>
+        <p class="mystic-modal-subtitle">Sign in with your email to begin your journey</p>
         <input
           id="mystic-email-input"
           type="email"
@@ -117,11 +157,11 @@ function renderLoginModal() {
           autocomplete="email"
         />
         <button id="mystic-login-btn" class="mystic-modal-btn">
-          Open the Door to the Stars
+          Send a Sign-in Link
         </button>
         <p id="mystic-login-error" class="mystic-modal-error"></p>
         <p class="mystic-modal-note">
-          * Your email address is used as your user ID
+          * We'll email a sign-in link to the address you enter
         </p>
       </div>
     </div>
@@ -141,22 +181,30 @@ async function handleLoginClick() {
 
   errorEl.textContent = "";
   btn.disabled = true;
-  btn.textContent = "Checking...";
+  btn.textContent = "Sending...";
 
   try {
-    const { subscribed } = await MysticAuth.login(email);
-    document.getElementById("mystic-login-modal").remove();
-
-    if (!subscribed) {
-      renderSubscriptionModal();
-    } else {
-      onLoginSuccess();
-    }
+    await MysticAuth.requestMagicLink(email);
+    showMagicLinkSent(email);
   } catch (err) {
     errorEl.textContent = err.message;
     btn.disabled = false;
-    btn.textContent = "Open the Door to the Stars";
+    btn.textContent = "Send a Sign-in Link";
   }
+}
+
+function showMagicLinkSent(email) {
+  const box = document.querySelector("#mystic-login-modal .mystic-modal-box");
+  if (!box) return;
+  box.innerHTML = `
+    <div class="mystic-modal-star">✉</div>
+    <h2 class="mystic-modal-title">Check your email</h2>
+    <p class="mystic-modal-subtitle">We sent a sign-in link to ${email}.</p>
+    <p class="mystic-modal-note">
+      Open the button in the email within 15 minutes to sign in.<br/>
+      If it doesn't arrive, please check your spam folder.
+    </p>
+  `;
 }
 
 // ============================================
@@ -208,20 +256,15 @@ async function handleCheckoutReturn() {
   if (!status) return false;
 
   // Strip the params from the URL
-  const cleanUrl = location.pathname;
-  history.replaceState({}, "", cleanUrl);
+  history.replaceState({}, "", location.pathname);
 
   if (status === "success") {
     // Wait briefly for the webhook to process before re-checking
     await new Promise((r) => setTimeout(r, 2000));
-    const userId = MysticAuth.getUserId();
-    if (userId) {
-      const subscribed = await MysticAuth.checkSubscription(userId);
-      if (subscribed) {
-        localStorage.setItem("mystic_subscription", "active");
-        onLoginSuccess();
-        return true;
-      }
+    const me = await MysticAuth.refreshMe();
+    if (me.subscribed) {
+      onLoginSuccess();
+      return true;
     }
     // Shown when the webhook hasn't arrived yet
     showToast("Confirming your payment. Please reopen this page in a moment.");
@@ -273,6 +316,9 @@ function onLoginSuccess() {
 // ============================================
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // Landing from /auth/verify: capture #mystic_sid
+  MysticAuth.captureSessionFromUrl();
+
   // Check whether we're returning from Checkout (success or cancel)
   if (MysticAuth.isLoggedIn()) {
     const handled = await handleCheckoutReturn();
@@ -284,6 +330,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  // Verify the session on the server and fetch subscription state
+  const me = await MysticAuth.refreshMe();
+  if (!me.loggedIn) {
+    renderLoginModal();
+    return;
+  }
+
   // index.html: show the app list without a subscription check once logged in
   if (window.MYSTIC_IS_INDEX) {
     onLoginSuccess();
@@ -291,11 +344,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Each app: verify the subscription before showing it
-  const userId = MysticAuth.getUserId();
-  const subscribed = await MysticAuth.checkSubscription(userId);
-  localStorage.setItem("mystic_subscription", subscribed ? "active" : "inactive");
-
-  if (!subscribed) {
+  if (!me.subscribed) {
     renderSubscriptionModal();
   } else {
     onLoginSuccess();
