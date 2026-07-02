@@ -612,7 +612,7 @@ async function callClaude(env, systemPrompt, userMessage, maxTokens = 800) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-5",
       max_tokens: maxTokens,
       system: systemPrompt + ABSOLUTE_RULE,
       messages: [{ role: "user", content: userMessage }],
@@ -632,7 +632,7 @@ async function callClaudeVision(env, systemPrompt, imageBase64, mimeType = "imag
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-5",
       max_tokens: maxTokens,
       system: systemPrompt + ABSOLUTE_RULE,
       messages: [{
