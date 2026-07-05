@@ -116,6 +116,7 @@ function validateMysticBody(action, body) {
 const RATE_LIMITS = {
   magic: 5,   // /auth/request-magic-link : メアドあたり 5回/時
   ai: 20,     // /api/mystic・/mystic/*    : ユーザーあたり 20回/時
+  mcp: 20,    // /mcp tools/call           : クライアントIPあたり 20回/時
 };
 
 function rateBucket(date = new Date()) {
@@ -1300,14 +1301,17 @@ const TAROT_CARDS = [
 ];
 
 async function handleMcp(request, env) {
-  // MCP_TOKEN が設定されている場合のみ認証チェック
-  if (env.MCP_TOKEN) {
-    const token =
-      request.headers.get("X-MCP-Token") ??
-      (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
-    if (token !== env.MCP_TOKEN) {
-      return mcpError(null, -32001, "Unauthorized");
-    }
+  // 認証は常に必須。MCP_TOKEN 未設定時は認証をスキップせず拒否する。
+  // （未設定のまま本番稼働すると無認証で Claude API の踏み台にされるため）
+  if (!env.MCP_TOKEN) {
+    console.error("MCP_TOKEN が未設定のため /mcp を拒否しました。無認証稼働を防ぐため必ず MCP_TOKEN を設定してください。");
+    return mcpError(null, -32001, "MCP is not configured");
+  }
+  const token =
+    request.headers.get("X-MCP-Token") ??
+    (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!timingSafeEqual(token, env.MCP_TOKEN)) {
+    return mcpError(null, -32001, "Unauthorized");
   }
 
   let body;
@@ -1339,8 +1343,14 @@ async function handleMcp(request, env) {
     case "tools/list":
       return mcpResponse(id, { tools: MCP_TOOLS });
 
-    case "tools/call":
+    case "tools/call": {
+      // Claude API を呼ぶ経路のみレートリミット（クライアントIPあたり 20回/時）
+      const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
+      if (!await checkRateLimit(env, "mcp", clientIp)) {
+        return mcpError(id, -32000, "Too many requests");
+      }
       return handleMcpToolCall(id, params, env);
+    }
 
     default:
       return mcpError(id, -32601, `Method not found: ${method}`);

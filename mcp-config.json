@@ -15,7 +15,7 @@
     }
   },
 
-  "_mcp_token_note": "MCP_TOKEN は Workers の環境変数として設定してください（未設定時は認証スキップ）。Cloudflare Dashboard > Workers > Settings > Variables から追加。",
+  "_mcp_token_note": "MCP_TOKEN は Workers の環境変数として必須です。未設定の場合 /mcp は常に拒否されます（無認証稼働の防止）。Cloudflare Dashboard > Workers > Settings > Variables から追加。",
 
   "_tools": [
     {
