@@ -563,19 +563,19 @@
     <h2 class="modal-title" id="modal-title">Share to Community</h2>
 
     <div class="form-group">
-      <label class="form-label" for="post-app">Divination App</label>
+      <label class="form-label" for="post-app">Reading Type</label>
       <select id="post-app" class="form-select">
         <optgroup label="AI Creations">
           <option>Spiritual Avatar Generator</option>
         </optgroup>
-        <optgroup label="Zodiac &amp; Destiny">
+        <optgroup label="Zodiac &amp; Life Patterns">
           <option>Star Reading</option>
           <option>Numerology Reading</option>
           <option>Guardian Star</option>
           <option>Nine Star Ki</option>
           <option>Maya Calendar</option>
-          <option>Animal Fortune</option>
-          <option>Name Fortune</option>
+          <option>Animal Archetype</option>
+          <option>Name Analysis</option>
           <option>Biorhythm</option>
           <option>Moon Sign</option>
           <option>Eastern Zodiac × Eto</option>
@@ -603,7 +603,7 @@
           <option>Moon Phase Journal</option>
           <option>Cosmic Message</option>
         </optgroup>
-        <optgroup label="Fortune &amp; Healing">
+        <optgroup label="Wellness &amp; Insight">
           <option>Today's Lucky Color</option>
           <option>Power Stone</option>
           <option>Palm Reading</option>
@@ -704,6 +704,11 @@
   }
 
   /* ── Render a single card ──────────────────────── */
+  // 旧表示名で保存済みの過去投稿を新表示名に変換（KVデータは変更しない）
+  const LEGACY_APP_NAMES = {
+    'Animal Fortune': 'Animal Archetype',
+    'Name Fortune': 'Name Analysis',
+  };
   function renderCard(post) {
     const liked = likedPosts.has(post.id);
     const initial = (post.username || '?')[0].toUpperCase();
@@ -723,7 +728,7 @@
         '<div class="post-avatar">' + avatarHtml + '</div>' +
         '<div class="post-meta">' +
           '<span class="post-username">' + escHtml(post.username) + '</span>' +
-          '<span class="post-app">' + escHtml(post.appName) + '</span>' +
+          '<span class="post-app">' + escHtml(LEGACY_APP_NAMES[post.appName] || post.appName) + '</span>' +
         '</div>' +
         '<span class="post-date">' + formatDate(post.createdAt) + '</span>' +
       '</div>' +
