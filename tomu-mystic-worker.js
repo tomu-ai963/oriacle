@@ -526,6 +526,9 @@ async function handleStripeCheckout(request, env) {
       "line_items[0][price]": env.MYSTIC_PRICE_ID,
       "line_items[0][quantity]": "1",
       "metadata[userId]": userId,
+      // 更新系Webhook（invoice.paid / subscription.deleted）から userId を復元できるよう
+      // サブスクリプション自体にも userId を刻む
+      "subscription_data[metadata][userId]": userId,
       "success_url": successUrl,
       "cancel_url": cancelUrl,
     }),
@@ -553,24 +556,113 @@ async function handleStripeWebhook(request, env) {
 
   const event = JSON.parse(body);
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-    const userId = session.metadata?.userId;
-    if (userId) {
-      const expires = new Date();
-      expires.setMonth(expires.getMonth() + 1);
-      await env.MYSTIC_SUBSCRIPTIONS.put(userId, JSON.stringify({
-        active: true,
-        plan: "mystic",
-        stripeCustomerId: session.customer,
-        stripeSubscriptionId: session.subscription,
-        expires: expires.toISOString(),
-        createdAt: new Date().toISOString(),
-      }));
+  switch (event.type) {
+    // 初回決済完了 → サブスク有効化 + customer→userId の逆引き索引を保存
+    case "checkout.session.completed": {
+      const session = event.data.object;
+      const userId = session.metadata?.userId;
+      if (userId) {
+        const expires = new Date();
+        expires.setMonth(expires.getMonth() + 1);
+        await env.MYSTIC_SUBSCRIPTIONS.put(userId, JSON.stringify({
+          active: true,
+          plan: "mystic",
+          stripeCustomerId: session.customer,
+          stripeSubscriptionId: session.subscription,
+          expires: expires.toISOString(),
+          createdAt: new Date().toISOString(),
+        }));
+        // 更新系Webフックが customer から userId を引けるよう索引を保存
+        if (session.customer) {
+          await env.MYSTIC_SUBSCRIPTIONS.put(`stripe_customer:${session.customer}`, userId);
+        }
+      }
+      break;
+    }
+
+    // 更新成功（継続課金）→ Stripe の実 period end で expires を更新
+    // ※ 固定 +1ヶ月の決め打ちをやめ、Stripe を真実の源とする
+    case "invoice.paid": {
+      const invoice = event.data.object;
+      const subscriptionId = invoice.subscription;
+      if (!subscriptionId) break;
+      const sub = await fetchStripeSubscription(env, subscriptionId);
+      if (!sub) break;
+      const userId = sub.metadata?.userId || await lookupUserIdByCustomer(env, invoice.customer);
+      if (userId && sub.current_period_end) {
+        const existing = await getSubscriptionRecord(env, userId);
+        await env.MYSTIC_SUBSCRIPTIONS.put(userId, JSON.stringify({
+          ...existing,
+          active: true,
+          plan: existing.plan || "mystic",
+          stripeCustomerId: invoice.customer || existing.stripeCustomerId,
+          stripeSubscriptionId: subscriptionId,
+          expires: new Date(sub.current_period_end * 1000).toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+      } else {
+        console.error(`invoice.paid: userId を解決できませんでした (customer=${invoice.customer}, sub=${subscriptionId})`);
+      }
+      break;
+    }
+
+    // 解約 → アクセスを失効させる（active=false, expires=現在時刻）
+    case "customer.subscription.deleted": {
+      const sub = event.data.object;
+      const userId = sub.metadata?.userId || await lookupUserIdByCustomer(env, sub.customer);
+      if (userId) {
+        const existing = await getSubscriptionRecord(env, userId);
+        await env.MYSTIC_SUBSCRIPTIONS.put(userId, JSON.stringify({
+          ...existing,
+          active: false,
+          expires: new Date().toISOString(),
+          canceledAt: new Date().toISOString(),
+        }));
+      } else {
+        console.error(`customer.subscription.deleted: userId を解決できませんでした (customer=${sub.customer})`);
+      }
+      break;
     }
   }
 
   return jsonResponse({ received: true });
+}
+
+// Stripe からサブスクリプションの最新状態を取得（period end / metadata の参照用）
+async function fetchStripeSubscription(env, subscriptionId) {
+  try {
+    const res = await fetch(`https://api.stripe.com/v1/subscriptions/${subscriptionId}`, {
+      headers: { "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}` },
+    });
+    if (!res.ok) {
+      console.error(`Stripe サブスク取得失敗 (${subscriptionId}): ${await res.text()}`);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.error(`Stripe サブスク取得エラー (${subscriptionId}): ${err.message}`);
+    return null;
+  }
+}
+
+// checkout 時に保存した逆引き索引から customerId → userId を解決
+async function lookupUserIdByCustomer(env, customerId) {
+  if (!customerId) return null;
+  try {
+    return await env.MYSTIC_SUBSCRIPTIONS.get(`stripe_customer:${customerId}`);
+  } catch {
+    return null;
+  }
+}
+
+// KV の既存サブスクリプションレコードを取得（更新時のマージ用。無ければ空オブジェクト）
+async function getSubscriptionRecord(env, userId) {
+  try {
+    const data = await env.MYSTIC_SUBSCRIPTIONS.get(userId);
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
 }
 
 async function verifyStripeSignature(payload, sigHeader, secret) {
