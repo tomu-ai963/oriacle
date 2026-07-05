@@ -1,7 +1,7 @@
 {
   "name": "Oriacle",
   "short_name": "Oriacle",
-  "description": "Oriacle — Where Ancient East meets Modern AI. 30 divination arts powered by artificial intelligence.",
+  "description": "Oriacle — Where Ancient East meets Modern AI. AI-powered self-discovery through 30 traditions of pattern analysis.",
   "start_url": "/oriacle/",
   "scope": "/oriacle/",
   "display": "standalone",
