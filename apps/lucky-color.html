@@ -15,7 +15,7 @@
   <div class="app-hero">
     <span class="app-icon">🎨</span>
     <h1 class="app-title">Today's Lucky Color</h1>
-    <p class="app-desc">Discover the color that will bring you the most fortune today and how to use it</p>
+    <p class="app-desc">Discover the color that suits you best today and how to make the most of it</p>
   </div>
   <div class="card">
     <div class="field-group">
@@ -56,7 +56,7 @@ document.getElementById("submit-btn").addEventListener("click",async()=>{
   const btn=document.getElementById("submit-btn");
   const res=document.getElementById("result");
   const rt=document.getElementById("result-text");
-  btn.disabled=true;btn.textContent="Reading the color fortune...";
+  btn.disabled=true;btn.textContent="Analyzing today's color...";
   res.classList.remove("hidden");rt.innerHTML='<span class="loading">✦ ✦ ✦</span>';
   try{const d=await MysticAuth.callApi("/mystic/lucky-color",{birthdate,targetDate,zodiacSign:sign,honmeisei:ki.name,lifePathNumber:lpn});rt.textContent=d.result;}
   catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}

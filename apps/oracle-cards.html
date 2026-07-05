@@ -39,22 +39,25 @@
 window.onMysticLogin=()=>document.getElementById("app").style.display="block";
 document.getElementById("logout-btn").addEventListener("click",()=>{MysticAuth.logout();location.reload();});
 
-const THEMES=["Love & Relationships","Work & Mission","Money & Abundance","Health & Healing","Spiritual Growth","Life's Turning Point","Creativity","Future Direction"];
+// Themes are either a plain string or a [display label, API value] pair
+// (API value is kept stable so AI prompt inputs stay unchanged)
+const THEMES=["Love & Relationships","Work & Mission","Money & Abundance","Health & Healing",["Personal Growth","Spiritual Growth"],"Life's Turning Point","Creativity","Future Direction"];
 const CARDS_LIST=[
   ["🌟","Gate of Light"],["🌙","Moon's Embrace"],["🔥","Will of Flame"],["💧","Water's Blessing"],["🌿","Earth's Power"],
   ["🦋","Transformation"],["🌈","Rainbow Bridge"],["⭐","New Star"],["🕊️","Peace"],["🌺","Blossoming"],
   ["🌊","Flow"],["🏔️","Summit"],["🌙","Full Moon"],["☀️","The Sun"],["🌙","New Moon"],["⚡","Flash of Light"]
 ];
 
-let selTheme=null,selCard=null;
+let selTheme=null,selThemeLabel=null,selCard=null;
 
 const tg=document.getElementById("theme-grid");
 THEMES.forEach(t=>{
+  const [label,value]=Array.isArray(t)?t:[t,t];
   const btn=document.createElement("button");
-  btn.className="opt-btn";btn.textContent=t;
+  btn.className="opt-btn";btn.textContent=label;
   btn.addEventListener("click",()=>{
     tg.querySelectorAll(".opt-btn").forEach(b=>b.classList.remove("selected"));
-    btn.classList.add("selected");selTheme=t;
+    btn.classList.add("selected");selTheme=value;selThemeLabel=label;
   });
   tg.appendChild(btn);
 });
@@ -74,7 +77,7 @@ CARDS_LIST.forEach(([icon,name])=>{
 document.getElementById("submit-btn").addEventListener("click",async()=>{
   if(!selTheme||!selCard){alert("Please choose a theme and a card");return;}
   const cd=document.getElementById("calc-display");
-  cd.textContent=`Theme: ${selTheme} / Card: ${selCard}`;cd.style.display="block";
+  cd.textContent=`Theme: ${selThemeLabel} / Card: ${selCard}`;cd.style.display="block";
   const btn=document.getElementById("submit-btn");
   const res=document.getElementById("result");
   const rt=document.getElementById("result-text");
