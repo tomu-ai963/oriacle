@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Animal Fortune — Oriacle</title>
+<title>Animal Archetype — Oriacle</title>
 <link rel="stylesheet" href="../mystic.css"/>
 <script src="../common/header.js"></script>
 </head>
@@ -14,8 +14,8 @@
 <main id="app" style="display:none">
   <div class="app-hero">
     <span class="app-icon">🐾</span>
-    <h1 class="app-title">Animal Fortune</h1>
-    <p class="app-desc">Your date of birth reveals your guardian animal</p>
+    <h1 class="app-title">Animal Archetype</h1>
+    <p class="app-desc">Discover the animal archetype that maps to your date of birth</p>
   </div>
   <div class="card">
     <div class="field-group">
@@ -23,9 +23,9 @@
       <input type="date" id="birthdate" min="1921-01-01" max="2030-12-31"/>
     </div>
     <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;"></div>
-    <button class="submit-btn" id="submit-btn">Find My Guardian Animal</button>
+    <button class="submit-btn" id="submit-btn">Find My Animal Archetype</button>
     <div id="result" class="result hidden">
-      <div class="result-label">▷ Message from Your Guardian Animal</div>
+      <div class="result-label">▷ Your Animal Archetype Insight</div>
       <div id="result-text"></div>
     </div>
   </div>
@@ -122,7 +122,7 @@ function updateCalcDisplay() {
   if (!birthdate) { cdEl.style.display = "none"; return; }
   const r = getAnimalFortune(birthdate);
   if (!r) { cdEl.style.display = "none"; return; }
-  cdEl.textContent = `Guardian Animal: ${r.animal}`;
+  cdEl.textContent = `Animal Archetype: ${r.animal}`;
   cdEl.style.display = "block";
 }
 
@@ -144,7 +144,7 @@ document.getElementById("submit-btn").addEventListener("click", async () => {
   } catch(e) {
     rt.style.color = "var(--error)"; rt.textContent = "Error: " + e.message;
   } finally {
-    btn.disabled = false; btn.textContent = "Find My Guardian Animal";
+    btn.disabled = false; btn.textContent = "Find My Animal Archetype";
   }
 });
 </script>

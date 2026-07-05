@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Name Fortune — Oriacle</title>
+<title>Name Analysis — Oriacle</title>
 <link rel="stylesheet" href="../mystic.css"/>
 <script src="../common/header.js"></script>
 </head>
@@ -14,8 +14,8 @@
 <main id="app" style="display:none">
   <div class="app-hero">
     <span class="app-icon">✍️</span>
-    <h1 class="app-title">Name Fortune</h1>
-    <p class="app-desc">Decode the five-pillar destiny hidden in your kanji name</p>
+    <h1 class="app-title">Name Analysis</h1>
+    <p class="app-desc">A structural analysis of your kanji name using the traditional five-pillar method</p>
   </div>
   <div class="card">
     <div class="field-group">
@@ -23,9 +23,9 @@
       <input type="text" id="full-name" placeholder="e.g. 山田 花子"/>
     </div>
     <div id="calc-display" style="display:none;margin:.6rem 0;padding:.5rem .8rem;background:rgba(130,80,255,.08);border:1px solid rgba(130,80,255,.2);border-radius:.5rem;font-size:.85rem;color:#b8a4ff;line-height:1.6;"></div>
-    <button class="submit-btn" id="submit-btn">Read My Name's Destiny</button>
+    <button class="submit-btn" id="submit-btn">Analyze My Name</button>
     <div id="result" class="result hidden">
-      <div class="result-label">▷ Five-Pillar Reading Result</div>
+      <div class="result-label">▷ Five-Pillar Analysis</div>
       <div id="result-text"></div>
     </div>
   </div>
@@ -72,7 +72,7 @@ document.getElementById("submit-btn").addEventListener("click",async()=>{
     confirmedGoKaku:true
   });rt.textContent=d.result;}
   catch(e){rt.style.color="var(--error)";rt.textContent="Error: "+e.message;}
-  finally{btn.disabled=false;btn.textContent="Read My Name's Destiny";}
+  finally{btn.disabled=false;btn.textContent="Analyze My Name";}
 });
 </script>
 </body>
