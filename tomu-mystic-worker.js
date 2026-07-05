@@ -320,11 +320,13 @@ function sanitizeRedirect(raw) {
   return DEFAULT_REDIRECT_URL;
 }
 
-// HMAC署名付きマジックトークン（ステートレス、15分有効）
+// HMAC署名付きマジックトークン（15分有効）
+// jti はワンタイム消費（使用済み記録）のための一意識別子。
 async function createMagicToken(env, email, redirect) {
   const payload = b64urlEncode(JSON.stringify({
     email,
     redirect,
+    jti: crypto.randomUUID(),
     exp: Math.floor(Date.now() / 1000) + MAGIC_TOKEN_TTL_SECONDS,
   }));
   const sig = await hmacHex(env.AUTH_SECRET, payload);
@@ -342,6 +344,19 @@ async function verifyMagicToken(env, token) {
   if (!obj || typeof obj.email !== "string" || !obj.email.includes("@")) return null;
   if (!obj.exp || obj.exp < Math.floor(Date.now() / 1000)) return null;
   return obj;
+}
+
+// マジックリンクのワンタイム消費。
+// jti を KV に「使用済み」として記録する。既に記録がある（=再利用）場合は false。
+// HMAC署名検証を通過したトークンのみが対象なので、TTLはトークン有効期限と同じ15分でよい。
+const MAGIC_USED_PREFIX = "magiclink:used:";
+async function consumeMagicJti(env, jti) {
+  if (!jti) return false;
+  const key = MAGIC_USED_PREFIX + jti;
+  const already = await env.MYSTIC_SUBSCRIPTIONS.get(key);
+  if (already) return false;
+  await env.MYSTIC_SUBSCRIPTIONS.put(key, "1", { expirationTtl: MAGIC_TOKEN_TTL_SECONDS });
+  return true;
 }
 
 async function createSession(env, userId) {
@@ -412,6 +427,10 @@ async function handleVerify(request, env) {
   const obj = await verifyMagicToken(env, token);
   if (!obj) {
     return htmlResponse(authResultPage("This link is invalid or has expired. Please sign in again.", false));
+  }
+  // ワンタイム消費: 署名・有効期限が正しくても、一度使ったリンクは再利用不可
+  if (!await consumeMagicJti(env, obj.jti)) {
+    return htmlResponse(authResultPage("This link has already been used. Please sign in again.", false));
   }
   const userId = btoa(obj.email);            // 既存 identity と互換（KVキー一致）
   const sessionId = await createSession(env, userId);
