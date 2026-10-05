@@ -5,7 +5,7 @@
 // localStorage and send it via Authorization: Bearer.
 // ============================================
 
-const WORKER_URL = "https://mystic-system-worker.inverted-triangle-leef.workers.dev";
+const WORKER_URL = "https://oriacle-worker.inverted-triangle-leef.workers.dev";
 
 const MysticAuth = {
   SESSION_KEY: "mystic_session",
